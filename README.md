@@ -17,6 +17,8 @@ npm install
 # Verificar instalación de ffmpeg
 ffmpeg -version
 📁 Estructura del Proyecto
+```
+
 text
 proyecto/
 ├── tmp/                    # Directorio de trabajo temporal

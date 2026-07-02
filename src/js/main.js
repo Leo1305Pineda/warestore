@@ -1,6 +1,7 @@
 /**
  * WhatsApp Chat Viewer - Main Application
  * Versión con carga diferida por scroll (carga hacia arriba) - CORREGIDA
+ * Con funcionalidad de descarga de notas de voz
  */
 
 // ============================================================
@@ -455,6 +456,12 @@ function renderMessagesBlock(messages, chatName, append = false) {
                                 <span class="duration">0:00</span>
                             </div>
                         </div>
+                        <!-- Botón de descarga -->
+                        <div class="audio-download-wrapper">
+                            <button class="audio-download-btn" onclick="downloadAudio(this, '${finalUrl}')" title="Descargar nota de voz">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
                     </div>
                     ${hasTranscription ? 
                         `<div class="transcription">
@@ -632,6 +639,12 @@ function prependMessagesBlock(messages, chatName) {
                                 <span class="current-time">0:00</span>
                                 <span class="duration">0:00</span>
                             </div>
+                        </div>
+                        <!-- Botón de descarga -->
+                        <div class="audio-download-wrapper">
+                            <button class="audio-download-btn" onclick="downloadAudio(this, '${finalUrl}')" title="Descargar nota de voz">
+                                <i class="fas fa-download"></i>
+                            </button>
                         </div>
                     </div>
                     ${hasTranscription ? 
@@ -1072,6 +1085,80 @@ function seekAudio(event, progressContainer) {
 }
 
 // ============================================================
+// FUNCIÓN DE DESCARGA DE NOTAS DE VOZ (NUEVA)
+// ============================================================
+
+function downloadAudio(btn, audioUrl) {
+    // Limpiar la URL
+    let cleanUrl = audioUrl.replace(/\/+$/, '').replace(/%20/g, ' ');
+    
+    // Mostrar feedback visual en el botón
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+    
+    // Extraer el nombre del archivo de la URL
+    const fileName = cleanUrl.split('/').pop() || 'nota-voz.opus';
+    
+    // Usar fetch para obtener el archivo y luego descargarlo
+    fetch(cleanUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // Crear URL para el blob
+            const blobUrl = URL.createObjectURL(blob);
+            
+            // Crear elemento de descarga
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Limpiar URL del blob después de un momento
+            setTimeout(() => {
+                URL.revokeObjectURL(blobUrl);
+            }, 100);
+            
+            // Restaurar el botón
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }, 2000);
+        })
+        .catch(error => {
+            console.error('Error al descargar el audio:', error);
+            
+            // Si el fetch falla, intentar con el método alternativo (abrir en nueva pestaña)
+            try {
+                const link = document.createElement('a');
+                link.href = cleanUrl;
+                link.download = fileName;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }, 2000);
+            } catch (fallbackError) {
+                alert('No se pudo descargar el archivo. Intenta abrirlo directamente: ' + cleanUrl);
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        });
+}
+
+// ============================================================
 // LIGHTBOX
 // ============================================================
 
@@ -1142,6 +1229,7 @@ window.loadChat = loadChat;
 window.loadPdf = loadPdf;
 window.toggleAudio = toggleAudio;
 window.seekAudio = seekAudio;
+window.downloadAudio = downloadAudio; // Exponer nueva función
 window.openLightbox = openLightbox;
 window.closeLightbox = closeLightbox;
 window.navigateLightbox = navigateLightbox;

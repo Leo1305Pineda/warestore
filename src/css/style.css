@@ -647,3 +647,61 @@ body {
         font-size: 24px;
     }
 }
+
+/* Estilos para el botón de descarga de audio */
+.msg-audio .audio-controls {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+}
+
+.msg-audio .audio-download-wrapper {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+.msg-audio .audio-download-btn {
+    background: transparent;
+    border: none;
+    color: #25d366;
+    cursor: pointer;
+    padding: 8px 10px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.msg-audio .audio-download-btn:hover {
+    background: rgba(37, 211, 102, 0.1);
+    transform: scale(1.1);
+}
+
+.msg-audio .audio-download-btn:active {
+    transform: scale(0.9);
+}
+
+.msg-audio .audio-download-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.msg-audio .audio-download-btn .fa-check {
+    color: #25d366;
+}
+
+/* Ajuste para el contenedor de audio en modo oscuro */
+.message.received .msg-audio .audio-download-btn {
+    color: #25d366;
+}
+
+.message.sent .msg-audio .audio-download-btn {
+    color: #fff;
+}

@@ -1,23 +1,21 @@
 # WhatsApp Chat Processor - Sistema de Transcripción y Visualización
 
-Sistema completo para procesar conversaciones de WhatsApp, transcribir notas de voz, y generar una interfaz web interactiva para visualizar los chats.
+Sistema completo para procesar conversaciones de WhatsApp, transcribir notas de voz, y generar una interfaz web interactiva para visualizar los chats con funcionalidad de descarga de audio.
 
 ## 📋 Requisitos Previos
 
-- **Node.js** (v16 o superior)
-- **ffmpeg** - Para conversión de audio
-- **npm** o **yarn**
+- Node.js (v16 o superior)
+- ffmpeg - Para conversión de audio
+- npm o yarn
 
 ## 🚀 Instalación
 
 ```bash
-# Instalar dependencias
 npm install
-
-# Verificar instalación de ffmpeg
 ffmpeg -version
-📁 Estructura del Proyecto
 ```
+
+## 📁 Estructura del Proyecto
 
 ```text
 proyecto/
@@ -34,93 +32,81 @@ proyecto/
 ├── gulpfile.js             # Configuración principal
 └── package.json
 ```
-🛠️ Comandos Disponibles
-Procesamiento Completo
+
+## 🛠️ Comandos Disponibles
+
+### Procesamiento Completo
+
 ```bash
-# Ejecuta todo el pipeline completo
 gulp default
 ```
-Secuencia:
 
-clean-tmp - Limpia directorio temporal
+**Secuencia:**
+- clean-tmp - Limpia directorio temporal
+- unzip-all - Descomprime archivos ZIP
+- process-subdirs - Procesa y transcribe
 
-unzip-all - Descomprime archivos ZIP
+### Gestión de Archivos
 
-process-subdirs - Procesa y transcribe
-
-Gestión de Archivos
-gulp unzip-all
-Descomprime todos los archivos .zip del directorio zips/ en tmp/.
+#### `gulp unzip-all`
+Descomprime todos los archivos .zip del directorio zips/ en tmp/
 
 ```bash
 gulp unzip-all
 ```
-Entrada: zips/*.zip
+- **Entrada:** zips/*.zip
+- **Salida:** tmp/[nombre-zip]/
+- **Función:** Extrae chats y archivos multimedia
 
-Salida: tmp/[nombre-zip]/
-
-Función: Extrae chats y archivos multimedia
-
-gulp clean-tmp
-Elimina completamente el directorio tmp/.
+#### `gulp clean-tmp`
+Elimina completamente el directorio tmp/
 
 ```bash
 gulp clean-tmp
 ```
-Útil para: Empezar desde cero sin archivos residuales
+- **Útil para:** Empezar desde cero sin archivos residuales
 
-Procesamiento de Audio
-gulp covert-opus-wav
-Convierte archivos .opus a .wav (formato compatible con Whisper).
+### Procesamiento de Audio
+
+#### `gulp covert-opus-wav`
+Convierte archivos .opus a .wav (formato compatible con Whisper)
 
 ```bash
 gulp covert-opus-wav
 ```
-Entrada: tmp/**/*.opus
+- **Entrada:** tmp/**/*.opus
+- **Salida:** tmp/**/*.wav
+- **Parámetros:** 16kHz, mono, PCM 16-bit
+- **Omite:** Archivos que ya fueron convertidos
 
-Salida: tmp/**/*.wav
-
-Parámetros: 16kHz, mono, PCM 16-bit
-
-Omite: Archivos que ya fueron convertidos
-
-gulp covert-wav-txt
-Transcribe archivos .wav a texto usando Whisper.
+#### `gulp covert-wav-txt`
+Transcribe archivos .wav a texto usando Whisper
 
 ```bash
 gulp covert-wav-txt
 ```
-Entrada: tmp/**/*.wav
+- **Entrada:** tmp/**/*.wav
+- **Salida:** tmp/**/*.wav.txt
+- **Omite:** Transcripciones existentes
+- **Modelo:** ggml-medium.bin (español)
 
-Salida: tmp/**/*.wav.txt
+### Procesamiento de Chat
 
-Modelo: ggml-medium.bin (español)
-
-Omite: Transcripciones existentes
-
-Procesamiento de Chat
-gulp process-subdirs
-Procesa todos los subdirectorios en tmp/ generando JSON enriquecido.
+#### `gulp process-subdirs`
+Procesa todos los subdirectorios en tmp/ generando JSON enriquecido
 
 ```bash
 gulp process-subdirs
 ```
-Funcionalidad:
+**Funcionalidad:**
+- Busca [chat].txt en cada subdirectorio
+- Parsea mensajes de WhatsApp
+- Identifica notas de voz (.opus)
+- Convierte .opus → .wav (si no existe)
+- Transcribe notas de voz
+- Genera data.json con metadatos
 
-Busca [chat].txt en cada subdirectorio
-
-Parsea mensajes de WhatsApp
-
-Identifica notas de voz (.opus)
-
-Convierte .opus → .wav (si no existe)
-
-Transcribe notas de voz
-
-Genera data.json con metadatos
-
-Estructura del JSON:
-
+**Estructura del JSON:**
 ```json
 {
   "fecha": "12/12/2024 10:30",
@@ -133,96 +119,85 @@ Estructura del JSON:
   "rutaWav": "assets/audio.wav"
 }
 ```
-Gestión de Recursos y Assets
-gulp clean-assets-names
-Limpia nombres de archivos eliminando caracteres especiales.
+
+### Gestión de Recursos y Assets
+
+#### `gulp clean-assets-names`
+Limpia nombres de archivos eliminando caracteres especiales
 
 ```bash
 gulp clean-assets-names
 ```
-Función: Renombra archivos en dist/**/assets/
+- **Función:** Renombra archivos en dist/**/assets/
+- **Elimina:** Caracteres invisibles, Espacios
+- **Actualiza:** Rutas en data.json
 
-Elimina: Caracteres invisibles, espacios
-
-Actualiza: Rutas en data.json
-
-Ejemplo de limpieza:
-
+**Ejemplo de limpieza:**
 ```text
-Foto 📸 2024.jpg → Foto_2024.jpg
-Audio (1).opus → Audio_1.opus
-gulp copy-assets
-Copia archivos multimedia a dist/[chat]/assets/.
+  original: Foto 📸 2024.jpg
+  limpio: Foto_2024.jpg
 ```
+
+#### `gulp copy-assets`
+Copia archivos multimedia a dist/[chat]/assets/
+
 ```bash
 gulp copy-assets
 ```
-Proceso:
 
-Busca archivos referenciados en data.json
+**Proceso:**
+- Busca archivos referenciados en data.json
+- Detecta imágenes, videos, PDFs, audios
+- Copia a dist/[chat]/assets/
+- Actualiza rutas en el JSON
+- Mantiene nombres limpios
 
-Detecta imágenes, videos, PDFs, audios
+**Tipos detectados:**
+- **Imagenes:** .jpg, .jpeg, .png, .gif, .webp
+- **Videos:** .mp4, .mov, .avi, .mkv
+- **Documentos:** .pdf, .doc, .docx, .xls, .xlsx
+- **Audio:** .opus, .wav
 
-Copia a dist/[chat]/assets/
+### Generación de Salidas
 
-Actualiza rutas en el JSON
-
-Mantiene nombres limpios
-
-Tipos detectados:
-
-Imágenes: .jpg, .jpeg, .png, .gif, .webp
-
-Videos: .mp4, .mov, .avi, .mkv
-
-Documentos: .pdf, .doc, .docx, .xls, .xlsx
-
-Audio: .opus, .wav
-
-Generación de Salidas
-gulp resources
-Pipeline completo de procesamiento de recursos (assets y HTML).
+#### `gulp resources`
+Pipeline completo de procesamiento de recursos (assets y HTML)
 
 ```bash
 gulp resources
 ```
-Secuencia:
+**Secuencia:**
+- clean-assets-names - Limpia nombres
+- copy-assets - Copia archivos
+- generate-index - Genera HTML
 
-clean-assets-names - Limpia nombres
-
-copy-assets - Copia archivos
-
-generate-index - Genera HTML
-
-gulp generate-index
-Crea el visor web index.html en dist/.
+#### `gulp generate-index`
+Crea el visor web index.html en dist/
 
 ```bash
 gulp generate-index
 ```
-Características:
 
-Lista de chats en sidebar
+**Características:**
+- Lista de chats en sidebar
+- Visualización de mensajes
+- Reproductor de audio integrado
+- NUEVO: Botón de descarga de notas de voz
+- Galería de imágenes
+- Visor de PDFs
+- Enlaces a documentos
+- Carga diferida (lazy loading)
+- Scroll infinito hacia arriba
 
-Visualización de mensajes
-
-Reproductor de audio integrado
-
-Galería de imágenes
-
-Visor de PDFs
-
-Enlaces a documentos
-
-gulp generate-txt
-Genera archivo data.txt con formato legible.
+#### `gulp generate-txt`
+Genera archivo data.txt con formato legible
 
 ```bash
 gulp generate-txt
 ```
-Salida: dist/**/data.txt
-Formato:
+- **Salida:** dist/**/data.txt
 
+**Formato:**
 ```text
 Fecha: 12/12/2024 10:30
 Usuario: Nombre
@@ -231,133 +206,158 @@ Tipo: NOTA DE VOZ
 Transcripción: Texto transcrito
 ---
 ```
-Utilidades
-gulp list-tmp-files
 
+### Utilidades
 
-Lista archivos en tmp/ mostrando nombres originales y limpios.
+#### `gulp list-tmp-files`
+Lista archivos en tmp/ mostrando nombres originales y limpios
+
 ```bash
 gulp list-tmp-files
 ```
-Salida:
-
+**Salida:**
 ```text
 📂 chat1:
   Foto 📸 2024.jpg → Foto_2024.jpg
   Audio (1).opus → Audio_1.opus
-📊 Flujo de Trabajo Típico
 ```
-1️⃣ Preparación
+
+## 📊 Flujo de Trabajo Típico
+
+### 1️⃣ Preparación
 ```bash
-# Limpiar directorios previos
 gulp clean-tmp
+Colocar archivos en zips/*.zip o tmp/[chat]/chat.txt y archivos .opus
 ```
-# Colocar archivos:
-# - zips/*.zip o
-# - tmp/[chat]/chat.txt y archivos .opus
-2️⃣ Procesamiento
+
+### 2️⃣ Procesamiento
 ```bash
-# Descomprimir (si usas ZIPs)
-gulp unzip-all
-```
-# Procesar chats y transcribir
+gulp unzip-all (si usas ZIPs)
 gulp process-subdirs
-3️⃣ Generación de Salida
+```
+
+### 3️⃣ Generación de Salida
 ```bash
-# Copiar assets y generar HTML
 gulp resources
+gulp generate-txt (opcional)
 ```
-# (Opcional) Generar archivo de texto
-gulp generate-txt
-4️⃣ Ver Resultados
+
+### 4️⃣ Ver Resultados
 ```bash
-# Abrir el visor web
 open dist/index.html
+http://localhost:8080 (si usas servidor)
 ```
-# O navegar a:
-# http://localhost:8080 (si usas servidor)
-⚙️ Configuración
-Variables en gulpfile.js
-javascript
-// Configuración principal
-const WHISPER_BIN = '.../whisper-cli';     // Binario de Whisper
-const MODEL_PATH = '.../ggml-medium.bin';  // Modelo de idioma
-const TMP_DIR = './tmp';                   // Directorio temporal
-const DIST_DIR = './dist';                 // Directorio de salida
-Parámetros de Whisper
-javascript
-// En transcribeWavToTxt()
-const command = `${WHISPER_BIN} -m ${MODEL_PATH} -f "${wavPath}" -l es --output-txt`;
--l es: Idioma español
 
---output-txt: Genera archivo .txt
+## 🎯 Características del Visor Web
 
-🔧 Solución de Problemas
-Errores Comunes
-❌ ffmpeg: command not found
+### Funcionalidades Principales
+
+- Visualización de chats con formato estilo WhatsApp
+- Reproducción de notas de voz con controles de reproducción
+- 📥 Descarga de notas de voz - Botón dedicado para cada audio
+- Galería de imágenes con lightbox interactivo
+- Visor de PDFs integrado
+- Reproducción de videos en línea
+- Carga diferida (lazy loading) para optimizar rendimiento
+- Scroll infinito hacia arriba para cargar mensajes antiguos
+- Transcripción de notas de voz visible junto al audio
+
+### Interfaz de Usuario
+
+- **Sidebar:** Lista de todos los chats disponibles
+- **Area_principal:** Mensajes en orden cronológico
+- **Controles_audio:** Play/Pause, Barra de progreso, Tiempo
+- **Boton_descarga:** Ícono de descarga junto a cada nota de voz
+- **Indicadores:** Estado de carga, Mensajes contados
+
+## ⚙️ Configuración
+
+### Variables en gulpfile.js
+```javascript
+const WHISPER_BIN = '.../whisper-cli';
+const MODEL_PATH = '.../ggml-medium.bin';
+const TMP_DIR = './tmp';
+const DIST_DIR = './dist';
+```
+
+### Parámetros de Whisper
+```javascript
+// whisper-cli -m ${MODEL_PATH} -f "${wavPath}" -l es --output-txt
+```
+- `-l es`: español
+- `--output-txt`: archivo .txt
+
+## 🔧 Solución de Problemas
+
+### Errores Comunes
+
+#### ❌ FFMPEG NOT FOUND
+ffmpeg: command not found
+
+- **macOS:** brew install ffmpeg
+- **Ubuntu/Debian:** sudo apt install ffmpeg
+- **Windows:** choco install ffmpeg
+
+#### ❌ MODELO NO ENCONTRADO
+Modelo no encontrado
 
 ```bash
-# macOS
-brew install ffmpeg
-
-# Ubuntu/Debian
-sudo apt install ffmpeg
-
-# Windows (con Chocolatey)
-choco install ffmpeg
+cd node_modules/nwhisper/cpp/whisper.cpp/models/ && wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
 ```
 
-❌ Modelo no encontrado
-```bash
-# Descargar modelo Whisper
-cd node_modules/nwhisper/cpp/whisper.cpp/models/
-wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
-```
+#### ❌ PERMISO DENEGADO
+Permission denied en binario
 
-❌ Permission denied en binario
 ```bash
 chmod +x node_modules/nwhisper/cpp/whisper.cpp/build/bin/whisper-cli
 ```
-❌ Archivos no se copian
 
-Verifica que data.json exista en tmp/[chat]/
+#### ❌ ARCHIVOS NO COPIAN
+Archivos no se copian
 
-Asegura que los nombres de archivo coincidan
+- Verificar que data.json exista en tmp/[chat]/
+- Asegurar que los nombres de archivo coincidan
+- Ejecutar gulp list-tmp-files para depurar
 
-Ejecuta gulp list-tmp-files para depurar
+#### ❌ DESCARGA AUDIO FALLA
+La descarga de notas de voz no funciona
 
-📝 Notas Adicionales
-Formato del Chat de WhatsApp
+- Verificar que los archivos de audio estén en dist/[chat]/assets/
+- Comprobar que las rutas en data.json sean correctas
+- Asegurar que el navegador permita descargas
+
+## 📝 Notas Adicionales
+
+### Formato del Chat de WhatsApp
 El parser espera el formato estándar de exportación:
-
 ```text
 12/12/2024 10:30 - Usuario: Mensaje de texto
 12/12/2024 10:31 - Usuario: <archivo adjunto: audio.opus>
 ```
-Caracteres Especiales
+
+### Caracteres Especiales
 El sistema maneja automáticamente:
+- Emojis y caracteres Unicode
+- Caracteres invisibles (direccionales)
+- Espacios y caracteres especiales en nombres
 
-Emojis y caracteres Unicode
+### Rendimiento
+- Procesamiento incremental (guarda progreso)
+- Omite archivos ya procesados
+- Carga diferida en el visor web
+- Ideal para grandes volúmenes de datos
 
-Caracteres invisibles (direccionales)
+### Seguridad
+- Las descargas de audio se realizan mediante fetch con manejo de errores
+- Validación de URLs y tipos de archivo
+- Feedback visual para el usuario durante la descarga
 
-Espacios y caracteres especiales en nombres
-
-Rendimiento
-Procesamiento incremental (guarda progreso)
-
-Omite archivos ya procesados
-
-Ideal para grandes volúmenes de datos
-
-🤝 Contribución
+## 🤝 Contribución
 Para añadir nuevas funcionalidades:
+1. Modificar el gulpfile.js
+2. Añadir tarea al pipeline
+3. Documentar en el README
 
-Modifica el gulpfile.js
+## 📄 Licencia
 
-Añade tu tarea al pipeline
-
-Documenta en el README
-
-📄 Licencia
-MIT - Uso libre y sin restricciones.
+MIT - Uso libre y sin restricciones

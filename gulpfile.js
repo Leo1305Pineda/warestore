@@ -908,11 +908,481 @@ gulp.task('clean-assets', function (done) {
 });
 
 // Tarea para copiar src a dist sobrescribiendo todo
-gulp.task('copy-src', function() {
+gulp.task('copy-src', function () {
     return gulp.src('src/**/*', { overwrite: true })
         .pipe(gulp.dest('dist'));
 });
 
+/**
+ * Convierte el objeto JSON a Markdown
+ */
+function jsonToMarkdown(data) {
+    let md = [];
+
+    // Título y descripción
+    md.push(`# ${data.nombre || 'Mi Proyecto'}`);
+    md.push('');
+    md.push(data.descripcion || '');
+    md.push('');
+
+    // Requisitos Previos
+    if (data.requisitos_previos) {
+        md.push('## 📋 Requisitos Previos');
+        md.push('');
+        data.requisitos_previos.forEach(req => {
+            md.push(`- ${req}`);
+        });
+        md.push('');
+    }
+
+    // Instalación
+    if (data.instalacion && data.instalacion.comandos) {
+        md.push('## 🚀 Instalación');
+        md.push('');
+        md.push('```bash');
+        data.instalacion.comandos.forEach(cmd => {
+            md.push(cmd);
+        });
+        md.push('```');
+        md.push('');
+    }
+
+    // Estructura del Proyecto
+    if (data.estructura_proyecto) {
+        md.push('## 📁 Estructura del Proyecto');
+        md.push('');
+        md.push('```text');
+        md.push('proyecto/');
+        md.push('├── tmp/                    # Directorio de trabajo temporal');
+        md.push('│   └── [nombre-chat]/      # Carpeta para cada chat');
+        md.push('│       ├── chat.txt        # Exportación de WhatsApp');
+        md.push('│       └── *.opus          # Archivos de audio');
+        md.push('├── dist/                   # Directorio de salida');
+        md.push('│   └── [nombre-chat]/      # Chat procesado');
+        md.push('│       ├── assets/         # Archivos multimedia');
+        md.push('│       ├── data.json       # Datos procesados');
+        md.push('│       └── index.html      # Visor web');
+        md.push('├── zips/                   # Archivos ZIP de entrada');
+        md.push('├── gulpfile.js             # Configuración principal');
+        md.push('└── package.json');
+        md.push('```');
+        md.push('');
+    }
+
+    // Comandos Disponibles
+    if (data.comandos_disponibles) {
+        md.push('## 🛠️ Comandos Disponibles');
+        md.push('');
+
+        // Procesamiento Completo
+        if (data.comandos_disponibles.procesamiento_completo) {
+            const pc = data.comandos_disponibles.procesamiento_completo;
+            md.push('### Procesamiento Completo');
+            md.push('');
+            md.push('```bash');
+            md.push(pc.comando);
+            md.push('```');
+            md.push('');
+            md.push('**Secuencia:**');
+            if (pc.secuencia) {
+                pc.secuencia.forEach(step => {
+                    md.push(`- ${step}`);
+                });
+            }
+            md.push('');
+        }
+
+        // Gestión de Archivos
+        if (data.comandos_disponibles.gestion_archivos) {
+            md.push('### Gestión de Archivos');
+            md.push('');
+            const ga = data.comandos_disponibles.gestion_archivos;
+
+            Object.entries(ga).forEach(([key, value]) => {
+                md.push(`#### \`${value.comando || key}\``);
+                md.push(value.descripcion || '');
+                md.push('');
+                md.push('```bash');
+                md.push(value.comando || '');
+                md.push('```');
+                if (value.entrada) md.push(`- **Entrada:** ${value.entrada}`);
+                if (value.salida) md.push(`- **Salida:** ${value.salida}`);
+                if (value.funcion) md.push(`- **Función:** ${value.funcion}`);
+                if (value.utilidad) md.push(`- **Útil para:** ${value.utilidad}`);
+                if (value.parametros) md.push(`- **Parámetros:** ${value.parametros}`);
+                if (value.omite) md.push(`- **Omite:** ${value.omite}`);
+                if (value.modelo) md.push(`- **Modelo:** ${value.modelo}`);
+                md.push('');
+            });
+        }
+
+        // Procesamiento de Audio
+        if (data.comandos_disponibles.procesamiento_audio) {
+            md.push('### Procesamiento de Audio');
+            md.push('');
+            const pa = data.comandos_disponibles.procesamiento_audio;
+
+            Object.entries(pa).forEach(([key, value]) => {
+                md.push(`#### \`${value.comando || key}\``);
+                md.push(value.descripcion || '');
+                md.push('');
+                md.push('```bash');
+                md.push(value.comando || '');
+                md.push('```');
+                if (value.entrada) md.push(`- **Entrada:** ${value.entrada}`);
+                if (value.salida) md.push(`- **Salida:** ${value.salida}`);
+                if (value.parametros) md.push(`- **Parámetros:** ${value.parametros}`);
+                if (value.omite) md.push(`- **Omite:** ${value.omite}`);
+                if (value.modelo) md.push(`- **Modelo:** ${value.modelo}`);
+                md.push('');
+            });
+        }
+
+        // Procesamiento de Chat
+        if (data.comandos_disponibles.procesamiento_chat) {
+            md.push('### Procesamiento de Chat');
+            md.push('');
+            const pc = data.comandos_disponibles.procesamiento_chat;
+
+            Object.entries(pc).forEach(([key, value]) => {
+                md.push(`#### \`${value.comando || key}\``);
+                md.push(value.descripcion || '');
+                md.push('');
+                md.push('```bash');
+                md.push(value.comando || '');
+                md.push('```');
+                if (value.funcionalidad) {
+                    md.push('**Funcionalidad:**');
+                    value.funcionalidad.forEach(func => {
+                        md.push(`- ${func}`);
+                    });
+                }
+                if (value.estructura_json) {
+                    md.push('');
+                    md.push('**Estructura del JSON:**');
+                    md.push('```json');
+                    md.push(JSON.stringify(value.estructura_json, null, 2));
+                    md.push('```');
+                }
+                md.push('');
+            });
+        }
+
+        // Gestión de Recursos
+        if (data.comandos_disponibles.gestion_recursos) {
+            md.push('### Gestión de Recursos y Assets');
+            md.push('');
+            const gr = data.comandos_disponibles.gestion_recursos;
+
+            Object.entries(gr).forEach(([key, value]) => {
+                md.push(`#### \`${value.comando || key}\``);
+                md.push(value.descripcion || '');
+                md.push('');
+                md.push('```bash');
+                md.push(value.comando || '');
+                md.push('```');
+                if (value.funcion) md.push(`- **Función:** ${value.funcion}`);
+                if (value.elimina) md.push(`- **Elimina:** ${value.elimina.join(', ')}`);
+                if (value.actualiza) md.push(`- **Actualiza:** ${value.actualiza}`);
+                if (value.ejemplo) {
+                    md.push('');
+                    md.push('**Ejemplo de limpieza:**');
+                    md.push('```text');
+                    Object.entries(value.ejemplo).forEach(([k, v]) => {
+                        md.push(`  ${k}: ${v}`);
+                    });
+                    md.push('```');
+                }
+                if (value.proceso) {
+                    md.push('');
+                    md.push('**Proceso:**');
+                    value.proceso.forEach(step => {
+                        md.push(`- ${step}`);
+                    });
+                }
+                if (value.tipos_detectados) {
+                    md.push('');
+                    md.push('**Tipos detectados:**');
+                    Object.entries(value.tipos_detectados).forEach(([k, v]) => {
+                        md.push(`- **${k.charAt(0).toUpperCase() + k.slice(1)}:** ${v.join(', ')}`);
+                    });
+                }
+                md.push('');
+            });
+        }
+
+        // Generación de Salidas
+        if (data.comandos_disponibles.generacion_salidas) {
+            md.push('### Generación de Salidas');
+            md.push('');
+            const gs = data.comandos_disponibles.generacion_salidas;
+
+            Object.entries(gs).forEach(([key, value]) => {
+                md.push(`#### \`${value.comando || key}\``);
+                md.push(value.descripcion || '');
+                md.push('');
+                md.push('```bash');
+                md.push(value.comando || '');
+                md.push('```');
+                if (value.secuencia) {
+                    md.push('**Secuencia:**');
+                    value.secuencia.forEach(step => {
+                        md.push(`- ${step}`);
+                    });
+                }
+                if (value.caracteristicas) {
+                    md.push('');
+                    md.push('**Características:**');
+                    value.caracteristicas.forEach(feature => {
+                        md.push(`- ${feature}`);
+                    });
+                }
+                if (value.salida) md.push(`- **Salida:** ${value.salida}`);
+                if (value.formato) {
+                    md.push('');
+                    md.push('**Formato:**');
+                    md.push('```text');
+                    md.push(value.formato);
+                    md.push('```');
+                }
+                md.push('');
+            });
+        }
+
+        // Utilidades
+        if (data.comandos_disponibles.utilidades) {
+            md.push('### Utilidades');
+            md.push('');
+            const util = data.comandos_disponibles.utilidades;
+
+            Object.entries(util).forEach(([key, value]) => {
+                md.push(`#### \`${value.comando || key}\``);
+                md.push(value.descripcion || '');
+                md.push('');
+                md.push('```bash');
+                md.push(value.comando || '');
+                md.push('```');
+                if (value.salida) {
+                    md.push('**Salida:**');
+                    md.push('```text');
+                    md.push(value.salida);
+                    md.push('```');
+                }
+                md.push('');
+            });
+        }
+    }
+
+    // Flujo de Trabajo
+    if (data.flujo_trabajo) {
+        md.push('## 📊 Flujo de Trabajo Típico');
+        md.push('');
+
+        const sections = {
+            'preparacion': '1️⃣ Preparación',
+            'procesamiento': '2️⃣ Procesamiento',
+            'generacion_salida': '3️⃣ Generación de Salida',
+            'ver_resultados': '4️⃣ Ver Resultados'
+        };
+
+        Object.entries(sections).forEach(([key, title]) => {
+            if (data.flujo_trabajo[key]) {
+                md.push(`### ${title}`);
+                md.push('```bash');
+                data.flujo_trabajo[key].pasos.forEach(step => {
+                    md.push(step);
+                });
+                md.push('```');
+                md.push('');
+            }
+        });
+    }
+
+    // Características del Visor Web
+    if (data.caracteristicas_visor_web) {
+        md.push('## 🎯 Características del Visor Web');
+        md.push('');
+
+        if (data.caracteristicas_visor_web.principales) {
+            md.push('### Funcionalidades Principales');
+            md.push('');
+            data.caracteristicas_visor_web.principales.forEach(feature => {
+                md.push(`- ${feature}`);
+            });
+            md.push('');
+        }
+
+        if (data.caracteristicas_visor_web.interfaz_usuario) {
+            md.push('### Interfaz de Usuario');
+            md.push('');
+            Object.entries(data.caracteristicas_visor_web.interfaz_usuario).forEach(([key, value]) => {
+                if (Array.isArray(value)) {
+                    md.push(`- **${key.charAt(0).toUpperCase() + key.slice(1)}:** ${value.join(', ')}`);
+                } else {
+                    md.push(`- **${key.charAt(0).toUpperCase() + key.slice(1)}:** ${value}`);
+                }
+            });
+            md.push('');
+        }
+    }
+
+    // Configuración
+    if (data.configuracion) {
+        md.push('## ⚙️ Configuración');
+        md.push('');
+
+        if (data.configuracion.variables_gulpfile) {
+            md.push('### Variables en gulpfile.js');
+            md.push('```javascript');
+            Object.entries(data.configuracion.variables_gulpfile).forEach(([key, value]) => {
+                md.push(`const ${key} = '${value}';`);
+            });
+            md.push('```');
+            md.push('');
+        }
+
+        if (data.configuracion.parametros_whisper) {
+            md.push('### Parámetros de Whisper');
+            md.push('```javascript');
+            md.push(`// ${data.configuracion.parametros_whisper.comando}`);
+            md.push('```');
+            if (data.configuracion.parametros_whisper.idioma) {
+                md.push(`- \`-l es\`: ${data.configuracion.parametros_whisper.idioma}`);
+            }
+            if (data.configuracion.parametros_whisper.salida) {
+                md.push(`- \`--output-txt\`: ${data.configuracion.parametros_whisper.salida}`);
+            }
+            md.push('');
+        }
+    }
+
+    // Solución de Problemas
+    if (data.solucion_problemas) {
+        md.push('## 🔧 Solución de Problemas');
+        md.push('');
+        md.push('### Errores Comunes');
+        md.push('');
+
+        Object.entries(data.solucion_problemas).forEach(([key, value]) => {
+            const title = key.replace(/_/g, ' ').toUpperCase();
+            md.push(`#### ❌ ${title}`);
+            md.push(value.error || '');
+            md.push('');
+
+            if (value.solucion) {
+                md.push('```bash');
+                md.push(value.solucion);
+                md.push('```');
+            }
+            if (value.soluciones) {
+                value.soluciones.forEach(sol => {
+                    md.push(`- ${sol}`);
+                });
+            }
+            if (value.solucion_mac || value.solucion_ubuntu || value.solucion_windows) {
+                if (value.solucion_mac) md.push(`- **macOS:** ${value.solucion_mac}`);
+                if (value.solucion_ubuntu) md.push(`- **Ubuntu/Debian:** ${value.solucion_ubuntu}`);
+                if (value.solucion_windows) md.push(`- **Windows:** ${value.solucion_windows}`);
+            }
+            md.push('');
+        });
+    }
+
+    // Notas Adicionales
+    if (data.notas_adicionales) {
+        md.push('## 📝 Notas Adicionales');
+        md.push('');
+
+        if (data.notas_adicionales.formato_chat_whatsapp) {
+            md.push('### Formato del Chat de WhatsApp');
+            md.push('El parser espera el formato estándar de exportación:');
+            md.push('```text');
+            md.push(data.notas_adicionales.formato_chat_whatsapp);
+            md.push('```');
+            md.push('');
+        }
+
+        if (data.notas_adicionales.caracteres_especiales) {
+            md.push('### Caracteres Especiales');
+            md.push('El sistema maneja automáticamente:');
+            data.notas_adicionales.caracteres_especiales.forEach(item => {
+                md.push(`- ${item}`);
+            });
+            md.push('');
+        }
+
+        if (data.notas_adicionales.rendimiento) {
+            md.push('### Rendimiento');
+            data.notas_adicionales.rendimiento.forEach(item => {
+                md.push(`- ${item}`);
+            });
+            md.push('');
+        }
+
+        if (data.notas_adicionales.seguridad) {
+            md.push('### Seguridad');
+            data.notas_adicionales.seguridad.forEach(item => {
+                md.push(`- ${item}`);
+            });
+            md.push('');
+        }
+    }
+
+    // Contribución
+    if (data.contribucion) {
+        md.push('## 🤝 Contribución');
+        md.push('Para añadir nuevas funcionalidades:');
+        data.contribucion.pasos.forEach((step, index) => {
+            md.push(`${index + 1}. ${step}`);
+        });
+        md.push('');
+    }
+
+    // Licencia
+    if (data.licencia) {
+        md.push('## 📄 Licencia');
+        md.push('');
+        md.push(data.licencia);
+        md.push('');
+    }
+
+    return md.join('\n');
+}
+
+/**
+ * Task de Gulp para generar README.md
+ */
+gulp.task('generate-readme', function (done) {
+    try {
+        const jsonPath = './README.json';
+        const outputPath = './README.md';
+
+        // Verificar que existe el JSON
+        if (!fs.existsSync(jsonPath)) {
+            console.error(`❌ No se encontró el archivo: ${jsonPath}`);
+            console.log('📝 Por favor, crea el archivo readme-data.json');
+            done();
+            return;
+        }
+
+        // Leer y parsear JSON
+        const jsonData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+
+        // Generar Markdown
+        const markdown = jsonToMarkdown(jsonData);
+
+        // Guardar archivo
+        fs.writeFileSync(outputPath, markdown, 'utf8');
+
+        console.log(`✅ README.md generado exitosamente en: ${outputPath}`);
+        console.log(`📊 Tamaño: ${markdown.length} caracteres`);
+        done();
+
+    } catch (error) {
+        console.error('❌ Error generando README.md:', error.message);
+        done(error);
+    }
+});
 
 gulp.task('resources', gulp.series(
     'clean-assets',

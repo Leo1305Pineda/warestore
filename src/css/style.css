@@ -17,7 +17,9 @@ body {
     overflow: hidden;
 }
 
-/* --- SIDEBAR --- */
+/* ============================================================
+   SIDEBAR PRINCIPAL (Izquierda)
+   ============================================================ */
 #sidebar {
     width: 320px;
     min-width: 320px;
@@ -26,18 +28,32 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    transition: transform 0.3s ease;
+    z-index: 100;
 }
 
 #sidebar-header {
     padding: 20px 16px;
     background: #111b21;
     border-bottom: 1px solid #2a3942;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 #sidebar-header h2 {
     color: #e9edef;
     font-size: 18px;
     font-weight: 600;
+}
+
+#sidebar-header .sidebar-toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    color: #e9edef;
+    font-size: 20px;
+    cursor: pointer;
 }
 
 /* --- CHAT LIST --- */
@@ -119,7 +135,46 @@ body {
     text-overflow: ellipsis;
 }
 
-/* --- CHAT VIEW --- */
+/* ============================================================
+   SIDEBAR SECUNDARIO (Derecha - Toggle)
+   ============================================================ */
+.sidebar-toggle-btn {
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1000;
+    background: #111b21;
+    border: 1px solid #2a3942;
+    color: #e9edef;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle-btn:hover {
+    background: #202c33;
+}
+
+#sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+}
+
+/* ============================================================
+   CHAT VIEW
+   ============================================================ */
 #chat-view {
     flex: 1;
     background: #0b141a;
@@ -581,6 +636,22 @@ body {
     color: #e74c3c;
 }
 
+/* --- SCROLL TRIGGER --- */
+.scroll-trigger-top {
+    text-align: center;
+    padding: 12px;
+    color: #8696a0;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+.scroll-trigger-top:hover {
+    background: rgba(37, 211, 102, 0.05);
+}
+
 /* --- ANIMATIONS --- */
 @keyframes fadeIn {
     from {
@@ -611,54 +682,7 @@ body {
     background: #3b4a54;
 }
 
-/* --- RESPONSIVE --- */
-@media(max-width:768px) {
-    #sidebar {
-        width: 240px;
-        min-width: 240px;
-    }
-    #messages-container {
-        padding: 12px 16px;
-    }
-    .message {
-        max-width: 85%;
-    }
-    .pdf-viewer iframe {
-        height: 300px;
-    }
-}
-
-@media(max-width:600px) {
-    #sidebar {
-        width: 100%;
-        min-width: unset;
-        max-height: 200px;
-        border-right: none;
-        border-bottom: 1px solid #2a3942;
-    }
-    body {
-        flex-direction: column;
-    }
-    .msg-audio {
-        min-width: unset;
-    }
-    .lightbox .lightbox-nav {
-        padding: 10px;
-        font-size: 24px;
-    }
-}
-
-/* Estilos para el botón de descarga de audio */
-.msg-audio .audio-controls {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 8px;
-}
-
+/* --- AUDIO DOWNLOAD BUTTON --- */
 .msg-audio .audio-download-wrapper {
     margin-left: auto;
     display: flex;
@@ -697,11 +721,115 @@ body {
     color: #25d366;
 }
 
-/* Ajuste para el contenedor de audio en modo oscuro */
 .message.received .msg-audio .audio-download-btn {
     color: #25d366;
 }
 
 .message.sent .msg-audio .audio-download-btn {
     color: #fff;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+/* --- Tablets y pantallas medianas --- */
+@media(max-width: 1024px) {
+    #sidebar {
+        width: 280px;
+        min-width: 280px;
+    }
+}
+
+/* --- Móviles y pantallas pequeñas --- */
+@media(max-width: 768px) {
+    /* Botón toggle visible en móvil */
+    .sidebar-toggle-btn {
+        display: flex;
+    }
+
+    /* Sidebar oculto por defecto en móvil */
+    #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 85%;
+        max-width: 320px;
+        height: 100vh;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 20px rgba(0, 0, 0, 0.5);
+        border-right: 1px solid #2a3942;
+        border-radius: 0;
+        z-index: 100;
+    }
+
+    /* Sidebar abierto */
+    #sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Overlay visible cuando sidebar está abierto */
+    #sidebar-overlay.active {
+        display: block;
+    }
+
+    /* Ajustes del chat view */
+    #chat-view {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    #messages-container {
+        padding: 12px 16px;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    .pdf-viewer iframe {
+        height: 300px;
+    }
+
+    /* Mostrar toggle en header del sidebar */
+    #sidebar-header .sidebar-toggle {
+        display: block;
+    }
+
+    /* Ocultar el botón flotante cuando el sidebar está abierto */
+    .sidebar-toggle-btn.hidden {
+        display: none;
+    }
+}
+
+@media(max-width: 480px) {
+    #sidebar {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    #messages-container {
+        padding: 8px 12px;
+    }
+    
+    .msg-audio {
+        min-width: unset;
+    }
+    
+    .lightbox .lightbox-nav {
+        padding: 10px;
+        font-size: 24px;
+    }
+
+    #chat-header {
+        padding: 12px 16px;
+    }
+
+    #chat-header h3 {
+        font-size: 14px;
+    }
+
+    .message {
+        max-width: 90%;
+    }
 }

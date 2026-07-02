@@ -2,6 +2,7 @@
  * WhatsApp Chat Viewer - Main Application
  * Versión con carga diferida por scroll (carga hacia arriba) - CORREGIDA
  * Con funcionalidad de descarga de notas de voz
+ * CON SIDEBAR TOGGLE PARA MÓVIL
  */
 
 // ============================================================
@@ -28,6 +29,35 @@ let currentPage = 0;
 let totalMessages = 0;
 let isFirstLoad = true;
 let scrollTriggerObserver = null;
+
+// ============================================================
+// FUNCIONES DE SIDEBAR (NUEVAS)
+// ============================================================
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+    toggleBtn.classList.toggle('hidden');
+}
+
+function closeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+    toggleBtn.classList.remove('hidden');
+}
+
+// Cerrar sidebar al seleccionar un chat en móvil
+function selectChatAndClose(chat) {
+    closeSidebar();
+}
 
 // ============================================================
 // FUNCIONES AUXILIARES
@@ -252,6 +282,8 @@ function renderChatList() {
             isFirstLoad = true;
             renderChatList();
             await loadChat(chat);
+            // Cerrar sidebar en móvil al seleccionar chat
+            closeSidebar();
         };
 
         list.appendChild(li);
@@ -1089,7 +1121,7 @@ function seekAudio(event, progressContainer) {
 }
 
 // ============================================================
-// FUNCIÓN DE DESCARGA DE NOTAS DE VOZ (NUEVA)
+// FUNCIÓN DE DESCARGA DE NOTAS DE VOZ
 // ============================================================
 
 function downloadAudio(btn, audioUrl) {
@@ -1233,10 +1265,13 @@ window.loadChat = loadChat;
 window.loadPdf = loadPdf;
 window.toggleAudio = toggleAudio;
 window.seekAudio = seekAudio;
-window.downloadAudio = downloadAudio; // Exponer nueva función
+window.downloadAudio = downloadAudio;
 window.openLightbox = openLightbox;
 window.closeLightbox = closeLightbox;
 window.navigateLightbox = navigateLightbox;
+window.toggleSidebar = toggleSidebar;
+window.closeSidebar = closeSidebar;
+window.selectChatAndClose = selectChatAndClose;
 
 // ============================================================
 // INICIALIZACIÓN

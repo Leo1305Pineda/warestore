@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Chat Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <h2><i class="fas fa-comment-dots"></i> Chats</h2>
+        </div>
+        <ul id="chat-list">
+            <li class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Cargando chats...
+            </li>
+        </ul>
+    </div>
+    <div id="chat-view">
+        <div id="chat-header">
+            <div class="chat-avatar" id="chat-avatar">?</div>
+            <div>
+                <h3 id="chat-name">Selecciona un chat</h3>
+                <div class="chat-status" id="chat-status">Clic en un chat para ver mensajes</div>
+            </div>
+        </div>
+        <div id="messages-container">
+            <div class="empty-state">
+                <i class="fas fa-comment"></i>
+                Selecciona un chat para ver los mensajes
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <button class="close-lightbox" onclick="closeLightbox()">&times;</button>
+        <button class="lightbox-nav prev" onclick="navigateLightbox(-1)">&#10094;</button>
+        <button class="lightbox-nav next" onclick="navigateLightbox(1)">&#10095;</button>
+        <img id="lightbox-img" src="" alt="Imagen ampliada">
+        <div class="lightbox-caption" id="lightbox-caption"></div>
+    </div>
+
+    <!-- Axios CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js">
+    </script>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -19,7 +19,7 @@ ffmpeg -version
 📁 Estructura del Proyecto
 ```
 
-text
+```text
 proyecto/
 ├── tmp/                    # Directorio de trabajo temporal
 │   └── [nombre-chat]/      # Carpeta para cada chat
@@ -33,11 +33,13 @@ proyecto/
 ├── zips/                   # Archivos ZIP de entrada
 ├── gulpfile.js             # Configuración principal
 └── package.json
+```
 🛠️ Comandos Disponibles
 Procesamiento Completo
-bash
+```bash
 # Ejecuta todo el pipeline completo
 gulp default
+```
 Secuencia:
 
 clean-tmp - Limpia directorio temporal
@@ -50,8 +52,9 @@ Gestión de Archivos
 gulp unzip-all
 Descomprime todos los archivos .zip del directorio zips/ en tmp/.
 
-bash
+```bash
 gulp unzip-all
+```
 Entrada: zips/*.zip
 
 Salida: tmp/[nombre-zip]/
@@ -61,16 +64,18 @@ Función: Extrae chats y archivos multimedia
 gulp clean-tmp
 Elimina completamente el directorio tmp/.
 
-bash
+```bash
 gulp clean-tmp
+```
 Útil para: Empezar desde cero sin archivos residuales
 
 Procesamiento de Audio
 gulp covert-opus-wav
 Convierte archivos .opus a .wav (formato compatible con Whisper).
 
-bash
+```bash
 gulp covert-opus-wav
+```
 Entrada: tmp/**/*.opus
 
 Salida: tmp/**/*.wav
@@ -82,8 +87,9 @@ Omite: Archivos que ya fueron convertidos
 gulp covert-wav-txt
 Transcribe archivos .wav a texto usando Whisper.
 
-bash
+```bash
 gulp covert-wav-txt
+```
 Entrada: tmp/**/*.wav
 
 Salida: tmp/**/*.wav.txt
@@ -96,8 +102,9 @@ Procesamiento de Chat
 gulp process-subdirs
 Procesa todos los subdirectorios en tmp/ generando JSON enriquecido.
 
-bash
+```bash
 gulp process-subdirs
+```
 Funcionalidad:
 
 Busca [chat].txt en cada subdirectorio
@@ -114,7 +121,7 @@ Genera data.json con metadatos
 
 Estructura del JSON:
 
-json
+```json
 {
   "fecha": "12/12/2024 10:30",
   "usuario": "Nombre",
@@ -125,12 +132,14 @@ json
   "rutaOpus": "assets/audio.opus",
   "rutaWav": "assets/audio.wav"
 }
+```
 Gestión de Recursos y Assets
 gulp clean-assets-names
 Limpia nombres de archivos eliminando caracteres especiales.
 
-bash
+```bash
 gulp clean-assets-names
+```
 Función: Renombra archivos en dist/**/assets/
 
 Elimina: Caracteres invisibles, espacios
@@ -139,14 +148,15 @@ Actualiza: Rutas en data.json
 
 Ejemplo de limpieza:
 
-text
+```text
 Foto 📸 2024.jpg → Foto_2024.jpg
 Audio (1).opus → Audio_1.opus
 gulp copy-assets
 Copia archivos multimedia a dist/[chat]/assets/.
-
-bash
+```
+```bash
 gulp copy-assets
+```
 Proceso:
 
 Busca archivos referenciados en data.json
@@ -173,8 +183,9 @@ Generación de Salidas
 gulp resources
 Pipeline completo de procesamiento de recursos (assets y HTML).
 
-bash
+```bash
 gulp resources
+```
 Secuencia:
 
 clean-assets-names - Limpia nombres
@@ -186,8 +197,9 @@ generate-index - Genera HTML
 gulp generate-index
 Crea el visor web index.html en dist/.
 
-bash
+```bash
 gulp generate-index
+```
 Características:
 
 Lista de chats en sidebar
@@ -205,58 +217,63 @@ Enlaces a documentos
 gulp generate-txt
 Genera archivo data.txt con formato legible.
 
-bash
+```bash
 gulp generate-txt
+```
 Salida: dist/**/data.txt
 Formato:
 
-text
+```text
 Fecha: 12/12/2024 10:30
 Usuario: Nombre
 Mensaje: Contenido del mensaje
 Tipo: NOTA DE VOZ
 Transcripción: Texto transcrito
 ---
+```
 Utilidades
 gulp list-tmp-files
-Lista archivos en tmp/ mostrando nombres originales y limpios.
 
-bash
+
+Lista archivos en tmp/ mostrando nombres originales y limpios.
+```bash
 gulp list-tmp-files
+```
 Salida:
 
-text
+```text
 📂 chat1:
   Foto 📸 2024.jpg → Foto_2024.jpg
   Audio (1).opus → Audio_1.opus
 📊 Flujo de Trabajo Típico
+```
 1️⃣ Preparación
-bash
+```bash
 # Limpiar directorios previos
 gulp clean-tmp
-
+```
 # Colocar archivos:
 # - zips/*.zip o
 # - tmp/[chat]/chat.txt y archivos .opus
 2️⃣ Procesamiento
-bash
+```bash
 # Descomprimir (si usas ZIPs)
 gulp unzip-all
-
+```
 # Procesar chats y transcribir
 gulp process-subdirs
 3️⃣ Generación de Salida
-bash
+```bash
 # Copiar assets y generar HTML
 gulp resources
-
+```
 # (Opcional) Generar archivo de texto
 gulp generate-txt
 4️⃣ Ver Resultados
-bash
+```bash
 # Abrir el visor web
 open dist/index.html
-
+```
 # O navegar a:
 # http://localhost:8080 (si usas servidor)
 ⚙️ Configuración
@@ -279,7 +296,7 @@ const command = `${WHISPER_BIN} -m ${MODEL_PATH} -f "${wavPath}" -l es --output-
 Errores Comunes
 ❌ ffmpeg: command not found
 
-bash
+```bash
 # macOS
 brew install ffmpeg
 
@@ -288,16 +305,19 @@ sudo apt install ffmpeg
 
 # Windows (con Chocolatey)
 choco install ffmpeg
-❌ Modelo no encontrado
+```
 
-bash
+❌ Modelo no encontrado
+```bash
 # Descargar modelo Whisper
 cd node_modules/nwhisper/cpp/whisper.cpp/models/
 wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
-❌ Permission denied en binario
+```
 
-bash
+❌ Permission denied en binario
+```bash
 chmod +x node_modules/nwhisper/cpp/whisper.cpp/build/bin/whisper-cli
+```
 ❌ Archivos no se copian
 
 Verifica que data.json exista en tmp/[chat]/
@@ -310,9 +330,10 @@ Ejecuta gulp list-tmp-files para depurar
 Formato del Chat de WhatsApp
 El parser espera el formato estándar de exportación:
 
-text
+```text
 12/12/2024 10:30 - Usuario: Mensaje de texto
 12/12/2024 10:31 - Usuario: <archivo adjunto: audio.opus>
+```
 Caracteres Especiales
 El sistema maneja automáticamente:
 

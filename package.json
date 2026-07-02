@@ -9,11 +9,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "nwhisper": "^0.3.0"
   },
   "devDependencies": {
     "adm-zip": "^0.5.17",
+    "child_process": "^1.0.2",
     "gulp": "^5.0.1",
-    "through2": "^5.0.1"
+    "through2": "^4.0.2",
+    "util": "^0.12.5"
   }
 }

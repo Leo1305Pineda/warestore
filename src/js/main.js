@@ -114,6 +114,10 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function replaceAssets(text) {
+    return text.replace('assets/', '')
+}
+
 // ============================================================
 // DETECCIÓN DE CHATS
 // ============================================================
@@ -260,18 +264,18 @@ function renderChatList() {
 
 async function loadChat(chatName, loadOlder = false) {
     const container = document.getElementById('messages-container');
-    
+
     if (isLoading) return;
     isLoading = true;
 
     try {
         chatBaseUrl = getChatBaseUrl(chatName);
         const dataUrl = chatBaseUrl + '/data.json';
-        
+
         // Si no tenemos los datos en caché o es la primera carga
         if (!messagesCache[chatName] || isFirstLoad) {
             console.log(`📥 Cargando datos desde: ${dataUrl}`);
-            
+
             // Mostrar indicador de carga
             container.innerHTML = `
                 <div class="empty-state">
@@ -298,13 +302,13 @@ async function loadChat(chatName, loadOlder = false) {
             const startIndex = Math.max(0, totalMessages - BLOCK_SIZE);
             const endIndex = totalMessages;
             const block = data.slice(startIndex, endIndex);
-            
+
             renderMessagesBlock(block, chatName, false);
             updateHeader(chatName, data);
-            
+
             // Hacer scroll al final (mensajes más recientes)
             container.scrollTop = container.scrollHeight;
-            
+
             // Si hay más mensajes antiguos, agregar el trigger de scroll arriba
             if (hasMoreMessages) {
                 addScrollTriggerTop();
@@ -315,29 +319,29 @@ async function loadChat(chatName, loadOlder = false) {
             currentPage++;
             const startIndex = Math.max(0, totalMessages - ((currentPage + 1) * BLOCK_SIZE));
             const endIndex = Math.max(0, totalMessages - (currentPage * BLOCK_SIZE));
-            
+
             console.log(`📜 Cargando bloque ${currentPage}: ${startIndex} a ${endIndex}`);
-            
+
             if (startIndex < endIndex && startIndex >= 0) {
                 const block = data.slice(startIndex, endIndex);
                 const scrollHeightBefore = container.scrollHeight;
                 const scrollTopBefore = container.scrollTop;
-                
+
                 // Insertar mensajes al principio
                 prependMessagesBlock(block, chatName);
-                
+
                 // Ajustar scroll para mantener la posición
                 const scrollHeightAfter = container.scrollHeight;
                 const heightDifference = scrollHeightAfter - scrollHeightBefore;
                 container.scrollTop = scrollTopBefore + heightDifference;
-                
+
                 // Actualizar estado
                 hasMoreMessages = startIndex > 0;
                 updateHeader(chatName, data);
-                
+
                 // IMPORTANTE: Remover trigger viejo y agregar uno nuevo si hay más mensajes
                 removeScrollTriggerTop();
-                
+
                 if (hasMoreMessages) {
                     addScrollTriggerTop();
                 } else {
@@ -378,7 +382,7 @@ async function loadChat(chatName, loadOlder = false) {
 
 function renderMessagesBlock(messages, chatName, append = false) {
     const container = document.getElementById('messages-container');
-    
+
     if (!messages || messages.length === 0) {
         if (!append) {
             container.innerHTML = `
@@ -447,7 +451,7 @@ function renderMessagesBlock(messages, chatName, append = false) {
                             <i class="fas fa-play"></i>
                         </button>
                         <div class="audio-info">
-                            <div><i class="fas fa-microphone"></i> Nota de voz</div>
+                            <div><i class="fas fa-microphone"></i> Nota de voz ${replaceAssets(msg.rutaWav)}</div>
                             <div class="audio-progress" onclick="seekAudio(event, this)">
                                 <div class="progress-bar"></div>
                             </div>
@@ -463,13 +467,13 @@ function renderMessagesBlock(messages, chatName, append = false) {
                             </button>
                         </div>
                     </div>
-                    ${hasTranscription ? 
-                        `<div class="transcription">
+                    ${hasTranscription ?
+                    `<div class="transcription">
                             <div class="transcription-label"><i class="fas fa-file-alt"></i> Transcripción:</div>
                             ${escapeHtml(msg.transcripcion)}
-                        </div>` : 
-                        ''
-                    }
+                        </div>` :
+                    ''
+                }
                 </div>
             `;
         }
@@ -515,7 +519,7 @@ function renderMessagesBlock(messages, chatName, append = false) {
                         </div>
                         <div class="file-download"><i class="fas fa-download"></i></div>
                     </a>
-                    ${isOffice ? 
+                    ${isOffice ?
                         `<div style="margin-top:4px;font-size:12px;color:#8696a0;">
                             <i class="fas fa-info-circle"></i> 
                             <a href="${finalUrl}" target="_blank" style="color:#25d366;text-decoration:none;">
@@ -563,7 +567,7 @@ function renderMessagesBlock(messages, chatName, append = false) {
 
 function prependMessagesBlock(messages, chatName) {
     const container = document.getElementById('messages-container');
-    
+
     if (!messages || messages.length === 0) return;
 
     const baseUrl = chatBaseUrl;
@@ -631,7 +635,7 @@ function prependMessagesBlock(messages, chatName) {
                             <i class="fas fa-play"></i>
                         </button>
                         <div class="audio-info">
-                            <div><i class="fas fa-microphone"></i> Nota de voz</div>
+                            <div><i class="fas fa-microphone"></i> Nota de voz ${replaceAssets(msg.rutaWav)}</div>
                             <div class="audio-progress" onclick="seekAudio(event, this)">
                                 <div class="progress-bar"></div>
                             </div>
@@ -647,13 +651,13 @@ function prependMessagesBlock(messages, chatName) {
                             </button>
                         </div>
                     </div>
-                    ${hasTranscription ? 
-                        `<div class="transcription">
+                    ${hasTranscription ?
+                    `<div class="transcription">
                             <div class="transcription-label"><i class="fas fa-file-alt"></i> Transcripción:</div>
                             ${escapeHtml(msg.transcripcion)}
-                        </div>` : 
-                        ''
-                    }
+                        </div>` :
+                    ''
+                }
                 </div>
             `;
         }
@@ -699,7 +703,7 @@ function prependMessagesBlock(messages, chatName) {
                         </div>
                         <div class="file-download"><i class="fas fa-download"></i></div>
                     </a>
-                    ${isOffice ? 
+                    ${isOffice ?
                         `<div style="margin-top:4px;font-size:12px;color:#8696a0;">
                             <i class="fas fa-info-circle"></i> 
                             <a href="${finalUrl}" target="_blank" style="color:#25d366;text-decoration:none;">
@@ -746,14 +750,14 @@ function prependMessagesBlock(messages, chatName) {
 function addScrollTriggerTop() {
     // Remover trigger existente
     removeScrollTriggerTop();
-    
+
     const container = document.getElementById('messages-container');
-    
+
     // Verificar si ya hay un trigger
     if (document.getElementById('scroll-trigger-top')) {
         return;
     }
-    
+
     // Crear elemento de carga al inicio
     const trigger = document.createElement('div');
     trigger.id = 'scroll-trigger-top';
@@ -767,7 +771,7 @@ function addScrollTriggerTop() {
             </div>
         </div>
     `;
-    
+
     // Insertar al principio
     container.insertBefore(trigger, container.firstChild);
 
@@ -775,7 +779,7 @@ function addScrollTriggerTop() {
     if (scrollTriggerObserver) {
         scrollTriggerObserver.disconnect();
     }
-    
+
     scrollTriggerObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting && !isLoading && hasMoreMessages) {
@@ -785,7 +789,7 @@ function addScrollTriggerTop() {
                 const text = document.getElementById('trigger-text');
                 if (spinner) spinner.style.display = 'inline-block';
                 if (text) text.textContent = 'Cargando...';
-                
+
                 loadChat(currentChat, true).finally(() => {
                     // El trigger se recrea en loadChat, así que no necesitamos ocultar el spinner aquí
                 });
@@ -814,14 +818,14 @@ function removeScrollTriggerTop() {
 function showAllLoadedMessageTop() {
     // Remover trigger primero
     removeScrollTriggerTop();
-    
+
     const container = document.getElementById('messages-container');
-    
+
     // Verificar si ya existe el mensaje
     if (document.getElementById('all-loaded-message')) {
         return;
     }
-    
+
     const message = document.createElement('div');
     message.id = 'all-loaded-message';
     message.style.cssText = `
@@ -891,15 +895,15 @@ function initLazyLoader() {
 function loadLazyImage(container, src) {
     let cleanSrc = src.replace(/\/+$/, '');
     cleanSrc = cleanSrc.replace(/%20/g, ' ');
-    
+
     console.log('🖼️ Cargando imagen:', cleanSrc);
-    
+
     const img = document.createElement('img');
     img.src = cleanSrc;
     img.alt = 'Imagen';
     img.loading = 'lazy';
-    
-    img.onerror = function() {
+
+    img.onerror = function () {
         console.error('❌ Error cargando imagen:', cleanSrc);
         container.innerHTML = `
             <div class="lazy-placeholder error">
@@ -908,26 +912,26 @@ function loadLazyImage(container, src) {
             </div>
         `;
     };
-    
-    img.onload = function() {
+
+    img.onload = function () {
         console.log('✅ Imagen cargada correctamente');
     };
-    
-    img.onclick = function() {
+
+    img.onclick = function () {
         openLightbox(this.src, 'Imagen');
     };
-    
+
     container.innerHTML = '';
     container.appendChild(img);
 }
 
 function loadLazyVideo(container, src) {
     let cleanSrc = src.replace(/\/+$/, '').replace(/%20/g, ' ');
-    
+
     const video = document.createElement('video');
     video.controls = true;
     video.preload = 'metadata';
-    video.onerror = function() {
+    video.onerror = function () {
         container.innerHTML = `
             <div class="lazy-placeholder error">
                 <i class="fas fa-exclamation-circle"></i> Error al cargar video
@@ -1014,7 +1018,7 @@ function toggleAudio(btn) {
         audio.preload = 'metadata';
         container.appendChild(audio);
 
-        audio.addEventListener('loadedmetadata', function() {
+        audio.addEventListener('loadedmetadata', function () {
             const durationDisplay = this.closest('.msg-audio').querySelector('.duration');
             if (durationDisplay) {
                 const minutes = Math.floor(this.duration / 60);
@@ -1023,11 +1027,11 @@ function toggleAudio(btn) {
             }
         });
 
-        audio.addEventListener('timeupdate', function() {
+        audio.addEventListener('timeupdate', function () {
             updateAudioProgress(this);
         });
 
-        audio.addEventListener('ended', function() {
+        audio.addEventListener('ended', function () {
             const playBtn = this.closest('.msg-audio').querySelector('.play-btn');
             if (playBtn) playBtn.innerHTML = '<i class="fas fa-play"></i>';
             const progressBar = this.closest('.msg-audio').querySelector('.progress-bar');
@@ -1036,7 +1040,7 @@ function toggleAudio(btn) {
             if (currentTime) currentTime.textContent = '0:00';
         });
 
-        audio.addEventListener('error', function() {
+        audio.addEventListener('error', function () {
             const playBtn = this.closest('.msg-audio').querySelector('.play-btn');
             if (playBtn) {
                 playBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
@@ -1091,15 +1095,15 @@ function seekAudio(event, progressContainer) {
 function downloadAudio(btn, audioUrl) {
     // Limpiar la URL
     let cleanUrl = audioUrl.replace(/\/+$/, '').replace(/%20/g, ' ');
-    
+
     // Mostrar feedback visual en el botón
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     btn.disabled = true;
-    
+
     // Extraer el nombre del archivo de la URL
     const fileName = cleanUrl.split('/').pop() || 'nota-voz.opus';
-    
+
     // Usar fetch para obtener el archivo y luego descargarlo
     fetch(cleanUrl)
         .then(response => {
@@ -1111,7 +1115,7 @@ function downloadAudio(btn, audioUrl) {
         .then(blob => {
             // Crear URL para el blob
             const blobUrl = URL.createObjectURL(blob);
-            
+
             // Crear elemento de descarga
             const link = document.createElement('a');
             link.href = blobUrl;
@@ -1119,12 +1123,12 @@ function downloadAudio(btn, audioUrl) {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
+
             // Limpiar URL del blob después de un momento
             setTimeout(() => {
                 URL.revokeObjectURL(blobUrl);
             }, 100);
-            
+
             // Restaurar el botón
             btn.innerHTML = '<i class="fas fa-check"></i>';
             setTimeout(() => {
@@ -1134,7 +1138,7 @@ function downloadAudio(btn, audioUrl) {
         })
         .catch(error => {
             console.error('Error al descargar el audio:', error);
-            
+
             // Si el fetch falla, intentar con el método alternativo (abrir en nueva pestaña)
             try {
                 const link = document.createElement('a');
@@ -1144,7 +1148,7 @@ function downloadAudio(btn, audioUrl) {
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
+
                 btn.innerHTML = '<i class="fas fa-check"></i>';
                 setTimeout(() => {
                     btn.innerHTML = originalHtml;
@@ -1214,7 +1218,7 @@ function navigateLightbox(direction) {
 // KEYBOARD SHORTCUTS
 // ============================================================
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeLightbox();
     if (e.key === 'ArrowLeft') navigateLightbox(-1);
     if (e.key === 'ArrowRight') navigateLightbox(1);

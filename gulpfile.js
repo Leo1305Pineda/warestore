@@ -7,8 +7,7 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 const execPromise = promisify(exec);
 const fsPromises = fs.promises;
-const readdirAsync = promisify(fs.readdir);
-
+const shell = require('gulp-shell');
 // Configuración
 const WHISPER_BIN = path.join(__dirname, '/node_modules/nwhisper/cpp/whisper.cpp/build/bin/whisper-cli');
 const MODEL_PATH = path.join(__dirname, '/node_modules/nwhisper/cpp/whisper.cpp/models/ggml-medium.bin');
@@ -1388,6 +1387,15 @@ gulp.task('resources', gulp.series(
     'clean-assets',
     'copy-assets'
 ));
+
+// Comprimir y reemplazar PDFs
+function compressPdfs() {
+    return gulp.src('dist/**/*.pdf')
+        .pipe(shell([
+            'gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dNOPAUSE -dQUIET -dBATCH -sOutputFile="<%= file.path %>" "<%= file.path %>"'
+        ]));
+}
+gulp.task('generate-pdf', compressPdfs);
 
 // Tarea por defecto: ejecuta todas en serie
 gulp.task('default', gulp.series(

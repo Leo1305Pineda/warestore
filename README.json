@@ -1,284 +1,397 @@
 {
     "nombre": "WhatsApp Chat Processor - Sistema de Transcripción y Visualización",
-    "descripcion": "Sistema completo para procesar conversaciones de WhatsApp, transcribir notas de voz, y generar una interfaz web interactiva para visualizar los chats con funcionalidad de descarga de audio.",
+    "descripcion": "Sistema completo para procesar conversaciones de WhatsApp, transcribir notas de voz usando Whisper, y generar una interfaz web interactiva para visualizar los chats con funcionalidad de descarga de audio.",
+    "version": "1.0.0",
     "requisitos_previos": [
-      "Node.js (v16 o superior)",
-      "ffmpeg - Para conversión de audio",
-      "npm o yarn"
+        "Node.js (v16 o superior)",
+        "ffmpeg - Para conversión de audio (instalación obligatoria)",
+        "npm o yarn para gestión de paquetes",
+        "Modelo Whisper ggml-medium.bin para transcripción en español"
     ],
     "instalacion": {
-      "comandos": [
-        "npm install",
-        "ffmpeg -version"
-      ]
+        "comandos": [
+            "# Instalar dependencias del proyecto",
+            "npm install",
+            "",
+            "# Verificar instalación de ffmpeg (necesario para conversión de audio)",
+            "ffmpeg -version",
+            "",
+            "# Verificar que los binarios de Whisper estén disponibles",
+            "ls node_modules/nwhisper/cpp/whisper.cpp/build/bin/whisper-cli",
+            "",
+            "# Descargar el modelo de Whisper (si no existe)",
+            "cd node_modules/nwhisper/cpp/whisper.cpp/models/",
+            "wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"
+        ]
     },
     "estructura_proyecto": {
-      "tmp": {
-        "descripcion": "Directorio de trabajo temporal",
-        "contenido": {
-          "[nombre-chat]": {
-            "chat.txt": "Exportación de WhatsApp",
-            "*.opus": "Archivos de audio"
-          }
+        "directorios": {
+            "tmp/": "Directorio de trabajo temporal donde se procesan los archivos",
+            "tmp/[nombre-chat]/": "Carpeta para cada chat con sus archivos",
+            "tmp/[nombre-chat]/chat.txt": "Exportación de WhatsApp en formato texto",
+            "tmp/[nombre-chat]/*.opus": "Archivos de audio de notas de voz",
+            "dist/": "Directorio de salida con los resultados procesados",
+            "dist/[nombre-chat]/": "Chat procesado y listo para visualizar",
+            "dist/[nombre-chat]/assets/": "Archivos multimedia (imágenes, videos, audios, PDFs)",
+            "dist/[nombre-chat]/data.json": "Datos procesados en formato JSON enriquecido",
+            "dist/[nombre-chat]/data.txt": "Versión legible en texto plano",
+            "dist/[nombre-chat]/index.html": "Visor web interactivo",
+            "zips/": "Directorio para archivos ZIP de entrada (opcional)",
+            "src/": "Código fuente del visor web y recursos estáticos",
+            "gulpfile.js": "Configuración principal de tareas Gulp",
+            "package.json": "Dependencias del proyecto"
         }
-      },
-      "dist": {
-        "descripcion": "Directorio de salida",
-        "contenido": {
-          "[nombre-chat]": {
-            "assets": "Archivos multimedia",
-            "data.json": "Datos procesados",
-            "index.html": "Visor web"
-          }
-        }
-      },
-      "zips": "Archivos ZIP de entrada",
-      "gulpfile.js": "Configuración principal",
-      "package.json": "Dependencias del proyecto"
     },
     "comandos_disponibles": {
-      "procesamiento_completo": {
-        "comando": "gulp default",
-        "descripcion": "Ejecuta todo el pipeline completo",
-        "secuencia": [
-          "clean-tmp - Limpia directorio temporal",
-          "unzip-all - Descomprime archivos ZIP",
-          "process-subdirs - Procesa y transcribe"
-        ]
-      },
-      "gestion_archivos": {
-        "unzip-all": {
-          "comando": "gulp unzip-all",
-          "descripcion": "Descomprime todos los archivos .zip del directorio zips/ en tmp/",
-          "entrada": "zips/*.zip",
-          "salida": "tmp/[nombre-zip]/",
-          "funcion": "Extrae chats y archivos multimedia"
+        "procesamiento_completo": {
+            "comando": "gulp default",
+            "descripcion": "Ejecuta el pipeline completo de procesamiento",
+            "secuencia": [
+                "clean-tmp - Limpia el directorio temporal (comentado por defecto)",
+                "unzip-all - Descomprime archivos ZIP (comentado por defecto)",
+                "process-subdirs - Procesa y transcribe los chats"
+            ]
         },
-        "clean-tmp": {
-          "comando": "gulp clean-tmp",
-          "descripcion": "Elimina completamente el directorio tmp/",
-          "utilidad": "Empezar desde cero sin archivos residuales"
-        }
-      },
-      "procesamiento_audio": {
-        "covert-opus-wav": {
-          "comando": "gulp covert-opus-wav",
-          "descripcion": "Convierte archivos .opus a .wav (formato compatible con Whisper)",
-          "entrada": "tmp/**/*.opus",
-          "salida": "tmp/**/*.wav",
-          "parametros": "16kHz, mono, PCM 16-bit",
-          "omite": "Archivos que ya fueron convertidos"
+        "gestion_archivos": {
+            "unzip-all": {
+                "comando": "gulp unzip-all",
+                "descripcion": "Descomprime todos los archivos .zip del directorio zips/ en tmp/",
+                "entrada": "zips/*.zip",
+                "salida": "tmp/[nombre-zip]/",
+                "funcion": "Extrae chats y archivos multimedia manteniendo la estructura"
+            },
+            "clean-tmp": {
+                "comando": "gulp clean-tmp",
+                "descripcion": "Elimina completamente el directorio tmp/",
+                "utilidad": "Empezar desde cero sin archivos residuales de procesamientos anteriores"
+            },
+            "clean-assets": {
+                "comando": "gulp clean-assets",
+                "descripcion": "Elimina los directorios assets/ de todos los chats en dist/",
+                "utilidad": "Limpiar archivos multimedia antes de regenerarlos"
+            }
         },
-        "covert-wav-txt": {
-          "comando": "gulp covert-wav-txt",
-          "descripcion": "Transcribe archivos .wav a texto usando Whisper",
-          "entrada": "tmp/**/*.wav",
-          "salida": "tmp/**/*.wav.txt",
-          "modelo": "ggml-medium.bin (español)",
-          "omite": "Transcripciones existentes"
-        }
-      },
-      "procesamiento_chat": {
-        "process-subdirs": {
-          "comando": "gulp process-subdirs",
-          "descripcion": "Procesa todos los subdirectorios en tmp/ generando JSON enriquecido",
-          "funcionalidad": [
-            "Busca [chat].txt en cada subdirectorio",
-            "Parsea mensajes de WhatsApp",
-            "Identifica notas de voz (.opus)",
-            "Convierte .opus → .wav (si no existe)",
-            "Transcribe notas de voz",
-            "Genera data.json con metadatos"
-          ],
-          "estructura_json": {
-            "fecha": "12/12/2024 10:30",
-            "usuario": "Nombre",
-            "mensaje": "Contenido del mensaje",
-            "esAdjunto": false,
-            "esNotaVoz": true,
-            "transcripcion": "Texto transcrito",
-            "rutaOpus": "assets/audio.opus",
-            "rutaWav": "assets/audio.wav"
-          }
-        }
-      },
-      "gestion_recursos": {
-        "clean-assets-names": {
-          "comando": "gulp clean-assets-names",
-          "descripcion": "Limpia nombres de archivos eliminando caracteres especiales",
-          "funcion": "Renombra archivos en dist/**/assets/",
-          "elimina": ["Caracteres invisibles", "Espacios"],
-          "actualiza": "Rutas en data.json",
-          "ejemplo": {
-            "original": "Foto 📸 2024.jpg",
-            "limpio": "Foto_2024.jpg"
-          }
+        "procesamiento_audio": {
+            "covert-opus-wav": {
+                "comando": "gulp covert-opus-wav",
+                "descripcion": "Convierte archivos .opus a .wav (formato compatible con Whisper)",
+                "entrada": "tmp/**/*.opus (búsqueda recursiva)",
+                "salida": "tmp/**/*.wav (mismo directorio que el .opus original)",
+                "parametros": "16kHz, mono, PCM 16-bit (formato óptimo para Whisper)",
+                "omite": "Archivos que ya fueron convertidos para evitar reprocesamiento"
+            },
+            "covert-wav-txt": {
+                "comando": "gulp covert-wav-txt",
+                "descripcion": "Transcribe archivos .wav a texto usando Whisper",
+                "entrada": "tmp/**/*.wav (búsqueda recursiva)",
+                "salida": "tmp/**/*.wav.txt (transcripción en texto plano)",
+                "modelo": "ggml-medium.bin (modelo optimizado para español)",
+                "omite": "Transcripciones existentes para ahorrar tiempo"
+            }
         },
-        "copy-assets": {
-          "comando": "gulp copy-assets",
-          "descripcion": "Copia archivos multimedia a dist/[chat]/assets/",
-          "proceso": [
-            "Busca archivos referenciados en data.json",
-            "Detecta imágenes, videos, PDFs, audios",
-            "Copia a dist/[chat]/assets/",
-            "Actualiza rutas en el JSON",
-            "Mantiene nombres limpios"
-          ],
-          "tipos_detectados": {
-            "imagenes": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
-            "videos": [".mp4", ".mov", ".avi", ".mkv"],
-            "documentos": [".pdf", ".doc", ".docx", ".xls", ".xlsx"],
-            "audio": [".opus", ".wav"]
-          }
-        }
-      },
-      "generacion_salidas": {
-        "resources": {
-          "comando": "gulp resources",
-          "descripcion": "Pipeline completo de procesamiento de recursos (assets y HTML)",
-          "secuencia": [
-            "clean-assets-names - Limpia nombres",
-            "copy-assets - Copia archivos",
-            "generate-index - Genera HTML"
-          ]
+        "procesamiento_chat": {
+            "process-subdirs": {
+                "comando": "gulp process-subdirs",
+                "descripcion": "Procesa todos los subdirectorios en tmp/ generando JSON enriquecido",
+                "funcionalidad": [
+                    "Busca [chat].txt en cada subdirectorio de tmp/",
+                    "Parsea mensajes de WhatsApp con formato estándar",
+                    "Identifica notas de voz (.opus) en los mensajes",
+                    "Convierte .opus → .wav usando ffmpeg (si no existe)",
+                    "Transcribe notas de voz con Whisper (si no tiene transcripción)",
+                    "Genera data.json con metadatos enriquecidos",
+                    "Guarda progreso incrementalmente (después de cada nota de voz)",
+                    "Maneja errores de transcripción sin detener el proceso"
+                ],
+                "estructura_json": {
+                    "fecha": "12/12/2024 10:30",
+                    "usuario": "Nombre del participante",
+                    "mensaje": "Contenido del mensaje o referencia al archivo adjunto",
+                    "esAdjunto": false,
+                    "esNotaVoz": true,
+                    "transcripcion": "Texto transcrito por Whisper",
+                    "rutaOpus": "assets/audio.opus (ruta relativa)",
+                    "rutaWav": "assets/audio.wav (ruta relativa)",
+                    "errorTranscripcion": "Mensaje de error si falló (solo en caso de error)"
+                }
+            }
         },
-        "generate-index": {
-          "comando": "gulp generate-index",
-          "descripcion": "Crea el visor web index.html en dist/",
-          "caracteristicas": [
-            "Lista de chats en sidebar",
-            "Visualización de mensajes",
-            "Reproductor de audio integrado",
-            "NUEVO: Botón de descarga de notas de voz",
-            "Galería de imágenes",
-            "Visor de PDFs",
-            "Enlaces a documentos",
-            "Carga diferida (lazy loading)",
-            "Scroll infinito hacia arriba"
-          ]
+        "gestion_recursos": {
+            "copy-assets": {
+                "comando": "gulp copy-assets",
+                "descripcion": "Copia archivos multimedia a dist/[chat]/assets/ y actualiza rutas en data.json",
+                "proceso": [
+                    "Lee todos los subdirectorios en tmp/",
+                    "Carga data.json de cada chat (si existe)",
+                    "Detecta imágenes (JPG, PNG, GIF, WebP, SVG)",
+                    "Detecta videos (MP4, MOV, AVI, MKV)",
+                    "Detecta documentos (PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX)",
+                    "Detecta notas de voz (WAV)",
+                    "Limpia nombres de archivos (elimina caracteres especiales)",
+                    "Copia los archivos a dist/[chat]/assets/",
+                    "Actualiza las rutas en data.json",
+                    "Mantiene nombres limpios y consistentes"
+                ],
+                "tipos_detectados": {
+                    "imagenes": [
+                        ".jpg",
+                        ".jpeg",
+                        ".png",
+                        ".gif",
+                        ".webp",
+                        ".svg"
+                    ],
+                    "videos": [
+                        ".mp4",
+                        ".mov",
+                        ".avi",
+                        ".mkv"
+                    ],
+                    "documentos": [
+                        ".pdf",
+                        ".doc",
+                        ".docx",
+                        ".xls",
+                        ".xlsx",
+                        ".ppt",
+                        ".pptx"
+                    ],
+                    "audio": [
+                        ".wav",
+                        ".opus"
+                    ]
+                }
+            },
+            "clean-assets-names": {
+                "comando": "gulp list-tmp-files (incluye limpieza de nombres)",
+                "descripcion": "Limpia nombres de archivos eliminando caracteres especiales",
+                "funcion": "Muestra nombres originales y limpios para verificar",
+                "elimina": [
+                    "Caracteres invisibles Unicode (direccionales)",
+                    "Espacios (reemplazados por _)",
+                    "Caracteres especiales que causan problemas en URLs"
+                ],
+                "ejemplo": {
+                    "original": "Foto 📸 2024.jpg",
+                    "limpio": "Foto_2024.jpg"
+                }
+            }
         },
-        "generate-txt": {
-          "comando": "gulp generate-txt",
-          "descripcion": "Genera archivo data.txt con formato legible",
-          "salida": "dist/**/data.txt",
-          "formato": "Fecha: 12/12/2024 10:30\nUsuario: Nombre\nMensaje: Contenido del mensaje\nTipo: NOTA DE VOZ\nTranscripción: Texto transcrito\n---"
+        "generacion_salidas": {
+            "resources": {
+                "comando": "gulp resources",
+                "descripcion": "Pipeline completo de procesamiento de recursos (assets y HTML)",
+                "secuencia": [
+                    "clean-assets - Limpia assets existentes",
+                    "copy-assets - Copia nuevos archivos y actualiza JSON"
+                ]
+            },
+            "generate-index": {
+                "comando": "gulp copy-src (copia el visor web)",
+                "descripcion": "Copia los archivos del visor web (src/) a dist/",
+                "caracteristicas": [
+                    "Lista de chats en sidebar con preview",
+                    "Visualización de mensajes estilo WhatsApp",
+                    "Reproductor de audio integrado con controles",
+                    "Botón de descarga para notas de voz (fetch con manejo de errores)",
+                    "Galería de imágenes con lightbox interactivo",
+                    "Visor de PDFs integrado",
+                    "Reproducción de videos en línea",
+                    "Carga diferida (lazy loading) para optimizar rendimiento",
+                    "Scroll infinito hacia arriba para cargar mensajes antiguos",
+                    "Transcripción de notas de voz visible junto al audio",
+                    "Interfaz responsive y adaptativa"
+                ]
+            },
+            "generate-txt": {
+                "comando": "gulp generate-txt",
+                "descripcion": "Genera archivo data.txt con formato legible",
+                "salida": "dist/**/data.txt (uno por cada chat)",
+                "formato": "Fecha: 12/12/2024 10:30\nUsuario: Nombre\nMensaje: Contenido del mensaje\nTipo: NOTA DE VOZ\nTranscripción: Texto transcrito\n---"
+            }
+        },
+        "utilidades": {
+            "list-tmp-files": {
+                "comando": "gulp list-tmp-files",
+                "descripcion": "Lista archivos en tmp/ mostrando nombres originales y limpios",
+                "salida": "📂 chat1:\n  Foto 📸 2024.jpg → Foto_2024.jpg\n  Audio (1).opus → Audio_1.opus"
+            }
         }
-      },
-      "utilidades": {
-        "list-tmp-files": {
-          "comando": "gulp list-tmp-files",
-          "descripcion": "Lista archivos en tmp/ mostrando nombres originales y limpios",
-          "salida": "📂 chat1:\n  Foto 📸 2024.jpg → Foto_2024.jpg\n  Audio (1).opus → Audio_1.opus"
-        }
-      }
     },
     "flujo_trabajo": {
-      "preparacion": {
-        "pasos": [
-          "gulp clean-tmp",
-          "Colocar archivos en zips/*.zip o tmp/[chat]/chat.txt y archivos .opus"
-        ]
-      },
-      "procesamiento": {
-        "pasos": [
-          "gulp unzip-all (si usas ZIPs)",
-          "gulp process-subdirs"
-        ]
-      },
-      "generacion_salida": {
-        "pasos": [
-          "gulp resources",
-          "gulp generate-txt (opcional)"
-        ]
-      },
-      "ver_resultados": {
-        "pasos": [
-          "open dist/index.html",
-          "http://localhost:8080 (si usas servidor)"
-        ]
-      }
+        "preparacion": {
+            "pasos": [
+                "# Limpiar directorios previos (opcional)",
+                "gulp clean-tmp",
+                "",
+                "# Colocar archivos en las ubicaciones correctas:",
+                "# - zips/*.zip (para descomprimir automáticamente)",
+                "# - o directamente en tmp/[chat]/chat.txt y archivos .opus"
+            ]
+        },
+        "procesamiento": {
+            "pasos": [
+                "# Descomprimir archivos ZIP (si usas)",
+                "gulp unzip-all",
+                "",
+                "# Procesar chats y transcribir notas de voz",
+                "gulp process-subdirs"
+            ]
+        },
+        "generacion_salida": {
+            "pasos": [
+                "# Copiar assets y generar estructura final",
+                "gulp resources",
+                "",
+                "# (Opcional) Generar archivos de texto legibles",
+                "gulp generate-txt",
+                "",
+                "# (Opcional) Copiar visor web (si necesitas actualizarlo)",
+                "gulp copy-src"
+            ]
+        },
+        "ver_resultados": {
+            "pasos": [
+                "# Abrir el visor web (usando un servidor local o navegador)",
+                "open dist/index.html",
+                "",
+                "# O servir con un servidor HTTP (ejemplo con Python)",
+                "python -m http.server 8000 --directory dist",
+                "# Luego navegar a: http://localhost:8000"
+            ]
+        }
     },
     "caracteristicas_visor_web": {
-      "principales": [
-        "Visualización de chats con formato estilo WhatsApp",
-        "Reproducción de notas de voz con controles de reproducción",
-        "📥 Descarga de notas de voz - Botón dedicado para cada audio",
-        "Galería de imágenes con lightbox interactivo",
-        "Visor de PDFs integrado",
-        "Reproducción de videos en línea",
-        "Carga diferida (lazy loading) para optimizar rendimiento",
-        "Scroll infinito hacia arriba para cargar mensajes antiguos",
-        "Transcripción de notas de voz visible junto al audio"
-      ],
-      "interfaz_usuario": {
-        "sidebar": "Lista de todos los chats disponibles",
-        "area_principal": "Mensajes en orden cronológico",
-        "controles_audio": ["Play/Pause", "Barra de progreso", "Tiempo"],
-        "boton_descarga": "Ícono de descarga junto a cada nota de voz",
-        "indicadores": ["Estado de carga", "Mensajes contados"]
-      }
+        "principales": [
+            "Visualización de chats con formato estilo WhatsApp",
+            "Reproducción de notas de voz con controles de reproducción",
+            "📥 Descarga de notas de voz - Botón dedicado para cada audio con feedback visual",
+            "Galería de imágenes con lightbox interactivo (navegación por teclado)",
+            "Visor de PDFs integrado",
+            "Reproducción de videos en línea",
+            "Carga diferida (lazy loading) para optimizar rendimiento",
+            "Scroll infinito hacia arriba para cargar mensajes antiguos",
+            "Transcripción de notas de voz visible junto al audio",
+            "Interfaz responsive para dispositivos móviles",
+            "Atajos de teclado (Esc para cerrar lightbox, flechas para navegar)"
+        ],
+        "interfaz_usuario": {
+            "sidebar": "Lista de todos los chats disponibles con preview y conteo",
+            "area_principal": "Mensajes en orden cronológico (más recientes abajo)",
+            "controles_audio": [
+                "Play/Pause",
+                "Barra de progreso interactiva",
+                "Tiempo actual/Duración"
+            ],
+            "boton_descarga": "Ícono de descarga junto a cada nota de voz con estado de carga",
+            "indicadores": [
+                "Estado de carga de mensajes",
+                "Contador de mensajes",
+                "Indicador de transcripción"
+            ]
+        }
     },
     "configuracion": {
-      "variables_gulpfile": {
-        "WHISPER_BIN": ".../whisper-cli",
-        "MODEL_PATH": ".../ggml-medium.bin",
-        "TMP_DIR": "./tmp",
-        "DIST_DIR": "./dist"
-      },
-      "parametros_whisper": {
-        "comando": "whisper-cli -m ${MODEL_PATH} -f \"${wavPath}\" -l es --output-txt",
-        "idioma": "español",
-        "salida": "archivo .txt"
-      }
+        "variables_gulpfile": {
+            "WHISPER_BIN": "./node_modules/nwhisper/cpp/whisper.cpp/build/bin/whisper-cli",
+            "MODEL_PATH": "./node_modules/nwhisper/cpp/whisper.cpp/models/ggml-medium.bin",
+            "TMP_DIR": "./tmp",
+            "DIST_DIR": "./dist"
+        },
+        "parametros_whisper": {
+            "comando": "whisper-cli -m ${MODEL_PATH} -f \"${wavPath}\" -l es --output-txt",
+            "idioma": "español (modelo optimizado)",
+            "salida": "archivo .txt con la transcripción"
+        }
     },
     "solucion_problemas": {
-      "ffmpeg_not_found": {
-        "error": "ffmpeg: command not found",
-        "solucion_mac": "brew install ffmpeg",
-        "solucion_ubuntu": "sudo apt install ffmpeg",
-        "solucion_windows": "choco install ffmpeg"
-      },
-      "modelo_no_encontrado": {
-        "error": "Modelo no encontrado",
-        "solucion": "cd node_modules/nwhisper/cpp/whisper.cpp/models/ && wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"
-      },
-      "permiso_denegado": {
-        "error": "Permission denied en binario",
-        "solucion": "chmod +x node_modules/nwhisper/cpp/whisper.cpp/build/bin/whisper-cli"
-      },
-      "archivos_no_copian": {
-        "error": "Archivos no se copian",
-        "soluciones": [
-          "Verificar que data.json exista en tmp/[chat]/",
-          "Asegurar que los nombres de archivo coincidan",
-          "Ejecutar gulp list-tmp-files para depurar"
-        ]
-      },
-      "descarga_audio_falla": {
-        "error": "La descarga de notas de voz no funciona",
-        "soluciones": [
-          "Verificar que los archivos de audio estén en dist/[chat]/assets/",
-          "Comprobar que las rutas en data.json sean correctas",
-          "Asegurar que el navegador permita descargas"
-        ]
-      }
+        "ffmpeg_not_found": {
+            "error": "ffmpeg: command not found (necesario para conversión de audio)",
+            "solucion_mac": "brew install ffmpeg",
+            "solucion_ubuntu": "sudo apt install ffmpeg",
+            "solucion_windows": "choco install ffmpeg (con Chocolatey) o descargar manual"
+        },
+        "whisper_bin_not_found": {
+            "error": "Binario de Whisper no encontrado",
+            "solucion": "cd node_modules/nwhisper/cpp/whisper.cpp && mkdir -p build && cd build && cmake .. && make"
+        },
+        "modelo_no_encontrado": {
+            "error": "Modelo ggml-medium.bin no encontrado",
+            "solucion": "cd node_modules/nwhisper/cpp/whisper.cpp/models/ && wget https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"
+        },
+        "permiso_denegado": {
+            "error": "Permission denied en binario de Whisper",
+            "solucion": "chmod +x node_modules/nwhisper/cpp/whisper.cpp/build/bin/whisper-cli"
+        },
+        "archivos_no_copian": {
+            "error": "Los archivos no se copian a dist/",
+            "soluciones": [
+                "Verificar que data.json exista en tmp/[chat]/",
+                "Asegurar que los nombres de archivo coincidan (el sistema limpia caracteres especiales)",
+                "Ejecutar gulp list-tmp-files para depurar y ver nombres limpios",
+                "Verificar permisos de escritura en dist/"
+            ]
+        },
+        "descarga_audio_falla": {
+            "error": "La descarga de notas de voz no funciona en el visor web",
+            "soluciones": [
+                "Verificar que los archivos WAV estén en dist/[chat]/assets/",
+                "Comprobar que las rutas en data.json sean relativas (assets/audio.wav)",
+                "Asegurar que el navegador permita descargas y tenga acceso al archivo",
+                "Revisar la consola del navegador para ver errores de CORS o 404"
+            ]
+        },
+        "transcripcion_falla": {
+            "error": "Falla en la transcripción de notas de voz",
+            "soluciones": [
+                "Verificar que el modelo Whisper esté instalado y accesible",
+                "Comprobar que el archivo WAV se generó correctamente (tamaño > 0)",
+                "Revisar que el audio tenga contenido válido (no esté corrupto)",
+                "El sistema guarda errores en data.json para identificación"
+            ]
+        }
     },
     "notas_adicionales": {
-      "formato_chat_whatsapp": "12/12/2024 10:30 - Usuario: Mensaje de texto\n12/12/2024 10:31 - Usuario: <archivo adjunto: audio.opus>",
-      "caracteres_especiales": ["Emojis y caracteres Unicode", "Caracteres invisibles (direccionales)", "Espacios y caracteres especiales en nombres"],
-      "rendimiento": ["Procesamiento incremental (guarda progreso)", "Omite archivos ya procesados", "Carga diferida en el visor web", "Ideal para grandes volúmenes de datos"],
-      "seguridad": [
-        "Las descargas de audio se realizan mediante fetch con manejo de errores",
-        "Validación de URLs y tipos de archivo",
-        "Feedback visual para el usuario durante la descarga"
-      ]
+        "formato_chat_whatsapp": "12/12/2024 10:30 - Usuario: Mensaje de texto\n12/12/2024 10:31 - Usuario: <archivo adjunto: audio.opus>\n12/12/2024 10:32 - Usuario: (archivo adjunto) Foto.jpg",
+        "caracteres_especiales": [
+            "Emojis y caracteres Unicode (se mantienen en el texto)",
+            "Caracteres invisibles (direccionales) se eliminan automáticamente",
+            "Espacios y caracteres especiales en nombres se reemplazan por _",
+            "Caracteres de formato específicos de WhatsApp se limpian"
+        ],
+        "rendimiento": [
+            "Procesamiento incremental - guarda progreso después de cada nota de voz",
+            "Omite archivos ya procesados (conversión y transcripción)",
+            "Carga diferida (lazy loading) en el visor web para optimizar rendimiento",
+            "Ideal para grandes volúmenes de datos y chats extensos",
+            "Búsqueda recursiva de archivos en todas las subcarpetas"
+        ],
+        "seguridad": [
+            "Las descargas de audio se realizan mediante fetch con manejo de errores",
+            "Validación de URLs y tipos de archivo antes de la descarga",
+            "Feedback visual para el usuario durante la descarga",
+            "Los archivos se copian y sirven desde dist/ para evitar acceso directo a tmp/"
+        ],
+        "dependencias": {
+            "adm-zip": "Para descompresión de archivos ZIP",
+            "child_process": "Para ejecutar ffmpeg y Whisper",
+            "fs": "Manejo de sistema de archivos",
+            "path": "Manejo de rutas",
+            "through2": "Streams para procesamiento de archivos en Gulp"
+        },
+        "procesamiento_serial": {
+            "nota": "El procesamiento de subdirectorios se realiza en serie para evitar conflictos y asegurar que los recursos estén disponibles",
+            "ejemplo": "El código actualmente está configurado para procesar específicamente 'Chat de WhatsApp con Directiva Flight Epic'"
+        }
     },
     "contribucion": {
-      "pasos": [
-        "Modificar el gulpfile.js",
-        "Añadir tarea al pipeline",
-        "Documentar en el README"
-      ]
+        "pasos": [
+            "Modificar el gulpfile.js para añadir nuevas funcionalidades",
+            "Añadir tu tarea al pipeline en la sección correspondiente",
+            "Actualizar la documentación en este README.json",
+            "Probar con datos de prueba antes de usar en producción",
+            "Hacer commit de los cambios con mensajes descriptivos"
+        ]
     },
-    "licencia": "MIT - Uso libre y sin restricciones"
-  }
+    "licencia": "MIT - Uso libre y sin restricciones. Atribución no requerida pero apreciada."
+}

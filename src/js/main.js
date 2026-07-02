@@ -1,6 +1,6 @@
 /**
  * WhatsApp Chat Viewer - Main Application
- * Versión definitiva - SIN query string para evitar problemas
+ * Versión con carga diferida por scroll (carga hacia arriba) - CORREGIDA
  */
 
 // ============================================================
@@ -8,6 +8,7 @@
 // ============================================================
 
 const ORIGIN = window.location.origin;
+const BLOCK_SIZE = 50; // Número de mensajes por bloque
 
 // ============================================================
 // ESTADO DE LA APLICACIÓN
@@ -20,6 +21,12 @@ let lightboxImages = [];
 let lightboxIndex = 0;
 let lazyObserver = null;
 let chatBaseUrl = '';
+let isLoading = false;
+let hasMoreMessages = true;
+let currentPage = 0;
+let totalMessages = 0;
+let isFirstLoad = true;
+let scrollTriggerObserver = null;
 
 // ============================================================
 // FUNCIONES AUXILIARES
@@ -86,32 +93,19 @@ function getFileIcon(ext) {
     return icons[ext] || 'fa-file';
 }
 
-/**
- * Obtiene la URL base del chat actual
- * Los chats están dentro de dist/, pero express.static los sirve desde la raíz
- */
 function getChatBaseUrl(chatName) {
-    // No usar encodeURIComponent para mantener los espacios
-    // Express maneja bien los espacios en las URLs
     const base = ORIGIN + '/' + chatName;
     return base.replace(/\/+$/, '');
 }
 
-/**
- * Construye URL para un asset - SIN query string
- */
 function buildAssetUrl(baseUrl, assetPath) {
     let cleanBase = baseUrl.replace(/\/+$/, '');
     let cleanPath = assetPath.replace(/^\/+/, '');
-    // No codificar, mantener los caracteres como están
     let url = cleanBase + '/' + cleanPath;
     url = url.replace(/\/+$/, '');
     return url;
 }
 
-/**
- * Escapa caracteres especiales para HTML
- */
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -126,7 +120,6 @@ function escapeHtml(text) {
 async function detectChats() {
     console.log('🔍 Detectando chats...');
 
-    // OPCIÓN 1: Buscar chats.json en dist/
     try {
         const fullUrl = ORIGIN + '/chats.json';
         console.log(`📄 Buscando chats.json en: ${fullUrl}`);
@@ -140,7 +133,6 @@ async function detectChats() {
         console.log('📄 No se encontró chats.json');
     }
 
-    // OPCIÓN 2: Lista de chats conocidos
     const commonChatNames = [
         'Chat de WhatsApp con Contabilidad Flightepic',
         'Chat de WhatsApp con Contabilidad flightepic',
@@ -151,10 +143,7 @@ async function detectChats() {
     ];
 
     const foundChats = [];
-
-    console.log(`📂 Buscando chats en la raíz (dist/): ${ORIGIN}/`);
     for (const chat of commonChatNames) {
-        // No codificar, usar el nombre tal cual
         const testUrl = ORIGIN + '/' + chat + '/data.json';
         try {
             await axios.head(testUrl);
@@ -192,6 +181,9 @@ async function loadChats() {
         renderChatList();
 
         currentChat = chats[0];
+        currentPage = 0;
+        hasMoreMessages = true;
+        isFirstLoad = true;
         await loadChat(currentChat);
 
     } catch (error) {
@@ -250,6 +242,9 @@ function renderChatList() {
         li.onclick = async () => {
             currentChat = chat;
             chatBaseUrl = getChatBaseUrl(chat);
+            currentPage = 0;
+            hasMoreMessages = true;
+            isFirstLoad = true;
             renderChatList();
             await loadChat(chat);
         };
@@ -259,88 +254,143 @@ function renderChatList() {
 }
 
 // ============================================================
-// CARGA DE MENSAJES
+// CARGA DE MENSAJES CON PAGINACIÓN (hacia arriba)
 // ============================================================
 
-async function loadChat(chatName) {
+async function loadChat(chatName, loadOlder = false) {
     const container = document.getElementById('messages-container');
-
-    if (messagesCache[chatName]) {
-        renderMessages(messagesCache[chatName], chatName);
-        updateHeader(chatName, messagesCache[chatName]);
-        return;
-    }
-
-    container.innerHTML = `
-        <div class="empty-state">
-            <i class="fas fa-spinner fa-spin"></i>
-            Cargando mensajes...
-        </div>
-    `;
+    
+    if (isLoading) return;
+    isLoading = true;
 
     try {
         chatBaseUrl = getChatBaseUrl(chatName);
         const dataUrl = chatBaseUrl + '/data.json';
-        console.log(`📥 Cargando mensajes desde: ${dataUrl}`);
+        
+        // Si no tenemos los datos en caché o es la primera carga
+        if (!messagesCache[chatName] || isFirstLoad) {
+            console.log(`📥 Cargando datos desde: ${dataUrl}`);
+            
+            // Mostrar indicador de carga
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Cargando mensajes...
+                </div>
+            `;
 
-        const response = await axios.get(dataUrl);
-        const data = response.data;
+            const response = await axios.get(dataUrl);
+            const data = response.data;
 
-        if (!Array.isArray(data)) {
-            throw new Error('El formato de data.json no es válido');
+            if (!Array.isArray(data)) {
+                throw new Error('El formato de data.json no es válido');
+            }
+
+            // Guardar todos los datos en caché (ordenados de más antiguo a más nuevo)
+            messagesCache[chatName] = data;
+            totalMessages = data.length;
+            currentPage = 0;
+            hasMoreMessages = totalMessages > BLOCK_SIZE;
+            isFirstLoad = false;
+
+            // Renderizar primer bloque (los más RECIENTES)
+            const startIndex = Math.max(0, totalMessages - BLOCK_SIZE);
+            const endIndex = totalMessages;
+            const block = data.slice(startIndex, endIndex);
+            
+            renderMessagesBlock(block, chatName, false);
+            updateHeader(chatName, data);
+            
+            // Hacer scroll al final (mensajes más recientes)
+            container.scrollTop = container.scrollHeight;
+            
+            // Si hay más mensajes antiguos, agregar el trigger de scroll arriba
+            if (hasMoreMessages) {
+                addScrollTriggerTop();
+            }
+        } else if (loadOlder && hasMoreMessages) {
+            // Cargar mensajes más antiguos
+            const data = messagesCache[chatName];
+            currentPage++;
+            const startIndex = Math.max(0, totalMessages - ((currentPage + 1) * BLOCK_SIZE));
+            const endIndex = Math.max(0, totalMessages - (currentPage * BLOCK_SIZE));
+            
+            console.log(`📜 Cargando bloque ${currentPage}: ${startIndex} a ${endIndex}`);
+            
+            if (startIndex < endIndex && startIndex >= 0) {
+                const block = data.slice(startIndex, endIndex);
+                const scrollHeightBefore = container.scrollHeight;
+                const scrollTopBefore = container.scrollTop;
+                
+                // Insertar mensajes al principio
+                prependMessagesBlock(block, chatName);
+                
+                // Ajustar scroll para mantener la posición
+                const scrollHeightAfter = container.scrollHeight;
+                const heightDifference = scrollHeightAfter - scrollHeightBefore;
+                container.scrollTop = scrollTopBefore + heightDifference;
+                
+                // Actualizar estado
+                hasMoreMessages = startIndex > 0;
+                updateHeader(chatName, data);
+                
+                // IMPORTANTE: Remover trigger viejo y agregar uno nuevo si hay más mensajes
+                removeScrollTriggerTop();
+                
+                if (hasMoreMessages) {
+                    addScrollTriggerTop();
+                } else {
+                    showAllLoadedMessageTop();
+                }
+            } else {
+                // No hay más mensajes
+                hasMoreMessages = false;
+                removeScrollTriggerTop();
+                showAllLoadedMessageTop();
+            }
         }
-
-        messagesCache[chatName] = data;
-        renderMessages(data, chatName);
-        updateHeader(chatName, data);
 
     } catch (error) {
         console.error('❌ Error cargando mensajes:', error);
-        container.innerHTML = `
-            <div class="empty-state error">
-                <i class="fas fa-exclamation-triangle"></i>
-                Error al cargar los mensajes
-                <br><span style="font-size:12px;color:#8696a0;margin-top:8px;display:block;">
-                    ${escapeHtml(error.message)}
-                </span>
-                <button class="retry-btn" onclick="loadChat('${chatName}')">
-                    <i class="fas fa-redo"></i> Reintentar
-                </button>
-            </div>
-        `;
+        if (isFirstLoad) {
+            container.innerHTML = `
+                <div class="empty-state error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Error al cargar los mensajes
+                    <br><span style="font-size:12px;color:#8696a0;margin-top:8px;display:block;">
+                        ${escapeHtml(error.message)}
+                    </span>
+                    <button class="retry-btn" onclick="loadChat('${chatName}')">
+                        <i class="fas fa-redo"></i> Reintentar
+                    </button>
+                </div>
+            `;
+        }
+    } finally {
+        isLoading = false;
     }
 }
 
 // ============================================================
-// UPDATE HEADER
+// RENDER BLOQUE DE MENSAJES (al final)
 // ============================================================
 
-function updateHeader(chatName, messages) {
-    document.getElementById('chat-name').textContent = chatName || 'Chat';
-    document.getElementById('chat-avatar').textContent = getInitials(chatName);
-    const count = messages ? messages.length : 0;
-    document.getElementById('chat-status').textContent = count + ' mensajes';
-}
-
-// ============================================================
-// RENDER MENSAJES (con Lazy Loading)
-// ============================================================
-
-function renderMessages(messages, chatName) {
+function renderMessagesBlock(messages, chatName, append = false) {
     const container = document.getElementById('messages-container');
-
+    
     if (!messages || messages.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-comment-slash"></i>
-                No hay mensajes en este chat
-            </div>
-        `;
+        if (!append) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-comment-slash"></i>
+                    No hay mensajes en este chat
+                </div>
+            `;
+        }
         return;
     }
 
     const baseUrl = chatBaseUrl;
-
     let html = '';
     let lastUser = null;
 
@@ -364,8 +414,6 @@ function renderMessages(messages, chatName) {
         // --- IMÁGENES ---
         if (msg.rutaImagen) {
             const finalUrl = buildAssetUrl(baseUrl, msg.rutaImagen);
-            console.log('🖼️ URL imagen:', finalUrl);
-            
             adjuntoHtml = `
                 <div class="msg-image" data-lazy-type="image" data-lazy-src="${finalUrl}">
                     <div class="lazy-placeholder">
@@ -487,14 +535,313 @@ function renderMessages(messages, chatName) {
         `;
     }
 
-    container.innerHTML = html;
-    container.scrollTop = container.scrollHeight;
+    if (append) {
+        // Insertar al final
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        while (tempDiv.firstChild) {
+            container.appendChild(tempDiv.firstChild);
+        }
+    } else {
+        container.innerHTML = html;
+    }
 
+    // Inicializar lazy loading para los nuevos elementos
     initLazyLoader();
 }
 
 // ============================================================
-// LAZY LOADING
+// PREPEND BLOQUE DE MENSAJES (al principio - mensajes más antiguos)
+// ============================================================
+
+function prependMessagesBlock(messages, chatName) {
+    const container = document.getElementById('messages-container');
+    
+    if (!messages || messages.length === 0) return;
+
+    const baseUrl = chatBaseUrl;
+    let html = '';
+    let lastUser = null;
+
+    // Determinar el primer usuario del bloque
+    if (messages.length > 0) {
+        const firstMsg = messages[0];
+        if (firstMsg && firstMsg.usuario !== 'Sistema') {
+            lastUser = firstMsg.usuario;
+        }
+    }
+
+    // Construir mensajes en orden (ya están en orden cronológico)
+    for (let i = 0; i < messages.length; i++) {
+        const msg = messages[i];
+        const isSystem = msg.usuario === 'Sistema';
+        const messageClass = isSystem ? 'system' : 'received';
+        let showUser = false;
+
+        if (!isSystem && lastUser !== msg.usuario) {
+            showUser = true;
+            lastUser = msg.usuario;
+        }
+
+        const userHtml = showUser && !isSystem ?
+            `<div class="msg-user">${escapeHtml(msg.usuario)}</div>` :
+            '';
+
+        let adjuntoHtml = '';
+
+        // --- IMÁGENES ---
+        if (msg.rutaImagen) {
+            const finalUrl = buildAssetUrl(baseUrl, msg.rutaImagen);
+            adjuntoHtml = `
+                <div class="msg-image" data-lazy-type="image" data-lazy-src="${finalUrl}">
+                    <div class="lazy-placeholder">
+                        <i class="fas fa-spinner fa-spin"></i> Cargando imagen...
+                    </div>
+                </div>
+            `;
+        }
+        // --- VIDEOS ---
+        else if (msg.rutaVideo) {
+            const finalUrl = buildAssetUrl(baseUrl, msg.rutaVideo);
+            adjuntoHtml = `
+                <div class="msg-video" data-lazy-type="video" data-lazy-src="${finalUrl}">
+                    <div class="lazy-placeholder">
+                        <i class="fas fa-spinner fa-spin"></i> Cargando video...
+                    </div>
+                </div>
+            `;
+        }
+        // --- NOTAS DE VOZ ---
+        else if (msg.esNotaVoz || (msg.mensaje && msg.mensaje.indexOf('.opus') !== -1)) {
+            const audioPath = msg.rutaWav || msg.rutaOpus || '';
+            const finalUrl = buildAssetUrl(baseUrl, audioPath);
+            const hasTranscription = msg.transcripcion && msg.transcripcion.length > 0;
+
+            adjuntoHtml = `
+                <div class="msg-audio" data-lazy-src="${finalUrl}">
+                    <div class="audio-controls">
+                        <button class="play-btn" onclick="toggleAudio(this)">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="audio-info">
+                            <div><i class="fas fa-microphone"></i> Nota de voz</div>
+                            <div class="audio-progress" onclick="seekAudio(event, this)">
+                                <div class="progress-bar"></div>
+                            </div>
+                            <div class="audio-time">
+                                <span class="current-time">0:00</span>
+                                <span class="duration">0:00</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${hasTranscription ? 
+                        `<div class="transcription">
+                            <div class="transcription-label"><i class="fas fa-file-alt"></i> Transcripción:</div>
+                            ${escapeHtml(msg.transcripcion)}
+                        </div>` : 
+                        ''
+                    }
+                </div>
+            `;
+        }
+        // --- PDFs ---
+        else if (msg.rutaArchivo && msg.rutaArchivo.toLowerCase().indexOf('.pdf') !== -1) {
+            const finalUrl = buildAssetUrl(baseUrl, msg.rutaArchivo);
+            adjuntoHtml = `
+                <div class="pdf-viewer" data-lazy-type="pdf" data-lazy-src="${finalUrl}">
+                    <div class="lazy-placeholder" style="min-height:200px;">
+                        <i class="fas fa-spinner fa-spin"></i> Cargando PDF...
+                    </div>
+                    <div class="pdf-controls">
+                        <button onclick="loadPdf(this)">
+                            <i class="fas fa-eye"></i> Cargar PDF
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        // --- OTROS ARCHIVOS ---
+        else if (msg.rutaArchivo || msg.esAdjunto) {
+            let filePath = msg.rutaArchivo || '';
+            if (!filePath && msg.mensaje) {
+                const matchFile = msg.mensaje.match(/([^\s]+\.[^\s]+)/);
+                if (matchFile) {
+                    filePath = matchFile[1];
+                }
+            }
+            if (filePath) {
+                const finalUrl = buildAssetUrl(baseUrl, filePath);
+                const fileName = filePath.split('/').pop();
+                const ext = getFileExtension(fileName);
+                const icon = getFileIcon(ext);
+                const officeExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+                const isOffice = officeExtensions.indexOf(ext) !== -1;
+
+                adjuntoHtml = `
+                    <a href="${finalUrl}" target="_blank" class="msg-file">
+                        <div class="file-icon"><i class="fas ${icon}"></i></div>
+                        <div class="file-info">
+                            <div class="file-name">${escapeHtml(fileName)}</div>
+                            <div class="file-size">${isOffice ? '📄 Documento Office' : '📎 Archivo'}</div>
+                        </div>
+                        <div class="file-download"><i class="fas fa-download"></i></div>
+                    </a>
+                    ${isOffice ? 
+                        `<div style="margin-top:4px;font-size:12px;color:#8696a0;">
+                            <i class="fas fa-info-circle"></i> 
+                            <a href="${finalUrl}" target="_blank" style="color:#25d366;text-decoration:none;">
+                                Ver en Office Online
+                            </a>
+                        </div>` : ''
+                    }
+                `;
+            }
+        }
+
+        let textContent = '';
+        if (!msg.esAdjunto && !msg.rutaImagen && !msg.rutaVideo) {
+            textContent = `<div class="msg-text">${escapeHtml(msg.mensaje || '')}</div>`;
+        }
+
+        html += `
+            <div class="message ${messageClass}">
+                ${userHtml}
+                ${textContent}
+                ${adjuntoHtml}
+                <div class="msg-time">${formatDate(msg.fecha)}</div>
+            </div>
+        `;
+    }
+
+    // Insertar al principio
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    const fragment = document.createDocumentFragment();
+    while (tempDiv.firstChild) {
+        fragment.appendChild(tempDiv.firstChild);
+    }
+    container.insertBefore(fragment, container.firstChild);
+
+    // Inicializar lazy loading para los nuevos elementos
+    initLazyLoader();
+}
+
+// ============================================================
+// SCROLL TRIGGER PARA CARGAR MÁS ANTIGUOS (arriba) - CORREGIDO
+// ============================================================
+
+function addScrollTriggerTop() {
+    // Remover trigger existente
+    removeScrollTriggerTop();
+    
+    const container = document.getElementById('messages-container');
+    
+    // Verificar si ya hay un trigger
+    if (document.getElementById('scroll-trigger-top')) {
+        return;
+    }
+    
+    // Crear elemento de carga al inicio
+    const trigger = document.createElement('div');
+    trigger.id = 'scroll-trigger-top';
+    trigger.className = 'scroll-trigger-top';
+    trigger.innerHTML = `
+        <div style="text-align:center;padding:20px;color:#8696a0;background: rgba(0,0,0,0.05);border-radius: 8px;margin: 10px 0;">
+            <i class="fas fa-chevron-up"></i> 
+            <span id="trigger-text">Cargar mensajes más antiguos</span>
+            <div style="font-size:12px;margin-top:5px;">
+                <i class="fas fa-spinner fa-spin" style="display:none;" id="loading-spinner-top"></i>
+            </div>
+        </div>
+    `;
+    
+    // Insertar al principio
+    container.insertBefore(trigger, container.firstChild);
+
+    // Crear nuevo observer para este trigger
+    if (scrollTriggerObserver) {
+        scrollTriggerObserver.disconnect();
+    }
+    
+    scrollTriggerObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !isLoading && hasMoreMessages) {
+                console.log('📜 Trigger visible - Cargando más mensajes antiguos...');
+                // Mostrar spinner
+                const spinner = document.getElementById('loading-spinner-top');
+                const text = document.getElementById('trigger-text');
+                if (spinner) spinner.style.display = 'inline-block';
+                if (text) text.textContent = 'Cargando...';
+                
+                loadChat(currentChat, true).finally(() => {
+                    // El trigger se recrea en loadChat, así que no necesitamos ocultar el spinner aquí
+                });
+            }
+        });
+    }, {
+        root: container,
+        rootMargin: '0px 0px 0px 0px',
+        threshold: 0.1
+    });
+
+    scrollTriggerObserver.observe(trigger);
+}
+
+function removeScrollTriggerTop() {
+    const trigger = document.getElementById('scroll-trigger-top');
+    if (trigger) {
+        trigger.remove();
+    }
+    if (scrollTriggerObserver) {
+        scrollTriggerObserver.disconnect();
+        scrollTriggerObserver = null;
+    }
+}
+
+function showAllLoadedMessageTop() {
+    // Remover trigger primero
+    removeScrollTriggerTop();
+    
+    const container = document.getElementById('messages-container');
+    
+    // Verificar si ya existe el mensaje
+    if (document.getElementById('all-loaded-message')) {
+        return;
+    }
+    
+    const message = document.createElement('div');
+    message.id = 'all-loaded-message';
+    message.style.cssText = `
+        text-align: center;
+        padding: 20px;
+        color: #8696a0;
+        font-size: 14px;
+        border-bottom: 1px solid rgba(134, 150, 160, 0.2);
+        margin-bottom: 10px;
+        background: rgba(37, 211, 102, 0.05);
+        border-radius: 8px;
+    `;
+    message.innerHTML = `
+        <i class="fas fa-check-circle" style="color:#25d366;"></i>
+        Todos los mensajes cargados (${totalMessages} mensajes)
+    `;
+    container.insertBefore(message, container.firstChild);
+}
+
+// ============================================================
+// UPDATE HEADER
+// ============================================================
+
+function updateHeader(chatName, messages) {
+    document.getElementById('chat-name').textContent = chatName || 'Chat';
+    document.getElementById('chat-avatar').textContent = getInitials(chatName);
+    const count = messages ? messages.length : 0;
+    const loaded = Math.min(((currentPage + 1) * BLOCK_SIZE), count);
+    document.getElementById('chat-status').textContent = `${loaded}/${count} mensajes`;
+}
+
+// ============================================================
+// LAZY LOADING DE MEDIA
 // ============================================================
 
 function initLazyLoader() {
@@ -529,9 +876,7 @@ function initLazyLoader() {
 }
 
 function loadLazyImage(container, src) {
-    // Limpiar URL: eliminar barras finales
     let cleanSrc = src.replace(/\/+$/, '');
-    // Reemplazar espacios codificados si los hay
     cleanSrc = cleanSrc.replace(/%20/g, ' ');
     
     console.log('🖼️ Cargando imagen:', cleanSrc);
@@ -543,7 +888,6 @@ function loadLazyImage(container, src) {
     
     img.onerror = function() {
         console.error('❌ Error cargando imagen:', cleanSrc);
-        console.error('  - Atributo src:', img.src);
         container.innerHTML = `
             <div class="lazy-placeholder error">
                 <i class="fas fa-exclamation-circle"></i> Error al cargar imagen
@@ -806,7 +1150,8 @@ window.navigateLightbox = navigateLightbox;
 // INICIALIZACIÓN
 // ============================================================
 
-console.log('📱 WhatsApp Chat Viewer');
+console.log('📱 WhatsApp Chat Viewer - Versión con carga diferida hacia arriba');
 console.log('📍 Origen:', ORIGIN);
+console.log(`📦 Tamaño de bloque: ${BLOCK_SIZE} mensajes`);
 
 loadChats();

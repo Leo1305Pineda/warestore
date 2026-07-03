@@ -826,45 +826,66 @@ function processDataJson() {
     return gulp.src('dist/**/data.json', { base: './' })
         .pipe(through2.obj(function (file, enc, callback) {
             try {
-                // Leer el contenido del JSON
                 const jsonData = JSON.parse(file.contents.toString());
                 const dirPath = path.dirname(file.path);
                 const txtPath = path.join(dirPath, 'data.txt');
 
                 let output = [];
 
-                // Procesar cada elemento del array
-                jsonData.forEach(item => {
-                    let entry = [];
+                jsonData.forEach((item, index) => {
+                    let lines = [];
+                    let headerParts = [];
 
-                    // Fecha y usuario
-                    entry.push(`Fecha: ${item.fecha}`);
-                    entry.push(`Usuario: ${item.usuario}`);
-
-                    // Mensaje principal
-                    if (item.mensaje) {
-                        entry.push(`Mensaje: ${item.mensaje}`);
+                    // Fecha
+                    if (item.fecha) {
+                        headerParts.push(`Fecha: ${item.fecha.trim()}`);
                     }
 
-                    // Procesar adjuntos
+                    // Usuario
+                    if (item.usuario) {
+                        headerParts.push(`Usuario: ${item.usuario.trim()}`);
+                    }
+
+                    // Tipo (si es adjunto o nota de voz)
                     if (item.esAdjunto) {
-                        if (item.esNotaVoz && item.transcripcion) {
-                            // Es una nota de voz con transcripción
-                            entry.push('Tipo: NOTA DE VOZ');
-                            entry.push(`Transcripción: ${item.transcripcion}`);
+                        if (item.esNotaVoz) {
+                            headerParts.push(`Tipo: NOTA DE VOZ`);
                         } else {
-                            // Es otro tipo de adjunto
-                            entry.push('Tipo: ADJUNTO (referencia en mensaje)');
+                            headerParts.push(`Tipo: ADJUNTO`);
                         }
                     }
 
-                    // Separador entre mensajes
-                    entry.push('---');
-                    output.push(entry.join('\n'));
+                    // Construir la línea de cabecera
+                    if (headerParts.length > 0) {
+                        lines.push(headerParts.join(' | '));
+                    }
+
+                    // Mensaje (si existe) - SIN SALTOS DE LÍNEA
+                    if (item.mensaje && item.mensaje.trim()) {
+                        const mensajeLimpio = item.mensaje.trim().replace(/\s+/g, ' ');
+                        lines.push(`Mensaje: ${mensajeLimpio}`);
+                    }
+
+                    // Transcripción (si es nota de voz) - SIN SALTOS DE LÍNEA
+                    if (item.esAdjunto && item.esNotaVoz && item.transcripcion && item.transcripcion.trim()) {
+                        const transcripcionLimpia = item.transcripcion.trim().replace(/\s+/g, ' ');
+                        lines.push(`Transcripción: ${transcripcionLimpia}`);
+                    }
+
+                    // Unir líneas y eliminar espacios extras
+                    const cleanEntry = lines
+                        .join('\n')
+                        .replace(/[ \t]+/g, ' ')
+                        .trim();
+
+                    if (cleanEntry) {
+                        output.push(cleanEntry);
+                    }
                 });
 
-                // Escribir el archivo de texto
-                fs.writeFileSync(txtPath, output.join('\n\n'), 'utf8');
+                // Separador entre mensajes (2 saltos de línea)
+                const finalOutput = output.join('\n\n');
+                fs.writeFileSync(txtPath, finalOutput, 'utf8');
 
                 console.log(`✅ data.txt generado en: ${dirPath}`);
 
@@ -877,7 +898,6 @@ function processDataJson() {
         .pipe(gulp.dest('.'));
 }
 
-// Tarea principal
 gulp.task('generate-txt', processDataJson);
 
 gulp.task('clean-assets', function (done) {
